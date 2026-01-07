@@ -26,6 +26,7 @@ import SubmitScores from "./pages/captain/SubmitScores";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import ManageGames from "./pages/admin/ManageGames";
+import LeagueManagement from "./pages/admin/LeagueManagement";
 import EmergencyControl from "./pages/admin/EmergencyControl";
 
 const queryClient = new QueryClient();
@@ -127,6 +128,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/leagues"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <LeagueManagement />
           </ProtectedRoute>
         }
       />

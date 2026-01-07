@@ -9,6 +9,29 @@ export interface Notification {
   read: boolean;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  captainName: string;
+  divisionId?: string;
+}
+
+export interface Division {
+  id: string;
+  name: string;
+  leagueId: string;
+  teams: string[]; // team IDs
+}
+
+export interface League {
+  id: string;
+  name: string;
+  day: 'Wednesday' | 'Saturday' | 'Sunday';
+  divisions: Division[];
+  defaultTime: string;
+  defaultVenue: string;
+}
+
 export interface Game {
   id: string;
   homeTeam: string;
@@ -20,6 +43,9 @@ export interface Game {
   homeScore?: number;
   awayScore?: number;
   refereeId?: string;
+  leagueId?: string;
+  divisionId?: string;
+  matchweek?: number;
 }
 
 export interface TimeSlot {
@@ -50,6 +76,93 @@ export interface FriendlyPost {
   contactName: string;
   postedAt: Date;
 }
+
+// Mock Teams
+export const mockTeams: Team[] = [
+  { id: 't1', name: 'Engineering Eagles', captainName: 'John Smith' },
+  { id: 't2', name: 'Business Hawks', captainName: 'Sarah Johnson' },
+  { id: 't3', name: 'Law Lions', captainName: 'Mike Davis' },
+  { id: 't4', name: 'Medical Wolves', captainName: 'Emily Chen' },
+  { id: 't5', name: 'Arts Panthers', captainName: 'Alex Thompson' },
+  { id: 't6', name: 'Science Tigers', captainName: 'Maria Santos' },
+  { id: 't7', name: 'Philosophy Foxes', captainName: 'James Wilson' },
+  { id: 't8', name: 'History Hounds', captainName: 'Rachel Green' },
+  { id: 't9', name: 'Computing Cobras', captainName: 'David Lee' },
+  { id: 't10', name: 'Economics Eagles', captainName: 'Lisa Brown' },
+  { id: 't11', name: 'Politics Panthers', captainName: 'Tom Harris' },
+  { id: 't12', name: 'Chemistry Cheetahs', captainName: 'Anna White' },
+  { id: 't13', name: 'Biology Bears', captainName: 'Chris Martin' },
+  { id: 't14', name: 'Physics Phoenixes', captainName: 'Kate Miller' },
+  { id: 't15', name: 'Maths Monarchs', captainName: 'Ryan Taylor' },
+  { id: 't16', name: 'English Eagles', captainName: 'Sophie Adams' },
+];
+
+// Mock Leagues with Divisions
+export const mockLeagues: League[] = [
+  {
+    id: 'wed-league',
+    name: 'Wednesday League',
+    day: 'Wednesday',
+    defaultTime: '18:00',
+    defaultVenue: 'Main Stadium - Field A',
+    divisions: [
+      {
+        id: 'wed-div1',
+        name: 'Division 1',
+        leagueId: 'wed-league',
+        teams: ['t1', 't2', 't3', 't4', 't5', 't6'],
+      },
+    ],
+  },
+  {
+    id: 'sat-league',
+    name: 'Saturday League',
+    day: 'Saturday',
+    defaultTime: '14:00',
+    defaultVenue: 'South Field',
+    divisions: [
+      {
+        id: 'sat-div1',
+        name: 'Division 1',
+        leagueId: 'sat-league',
+        teams: ['t7', 't8', 't9', 't10'],
+      },
+      {
+        id: 'sat-div2',
+        name: 'Division 2',
+        leagueId: 'sat-league',
+        teams: ['t11', 't12', 't13', 't14'],
+      },
+    ],
+  },
+  {
+    id: 'sun-league',
+    name: 'Sunday League',
+    day: 'Sunday',
+    defaultTime: '11:00',
+    defaultVenue: 'North Field',
+    divisions: [
+      {
+        id: 'sun-div1',
+        name: 'Division 1',
+        leagueId: 'sun-league',
+        teams: ['t1', 't7'],
+      },
+      {
+        id: 'sun-div2',
+        name: 'Division 2',
+        leagueId: 'sun-league',
+        teams: ['t2', 't8'],
+      },
+      {
+        id: 'sun-div3',
+        name: 'Division 3',
+        leagueId: 'sun-league',
+        teams: ['t3', 't9'],
+      },
+    ],
+  },
+];
 
 // Mock Notifications
 export const mockNotifications: Notification[] = [
@@ -106,6 +219,8 @@ export const mockRefereeGames: Game[] = [
     venue: 'Main Stadium - Field A',
     status: 'scheduled',
     refereeId: 'ref-1',
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
   {
     id: 'g2',
@@ -116,6 +231,8 @@ export const mockRefereeGames: Game[] = [
     venue: 'South Field',
     status: 'scheduled',
     refereeId: 'ref-1',
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
   {
     id: 'g3',
@@ -126,6 +243,8 @@ export const mockRefereeGames: Game[] = [
     venue: 'North Field',
     status: 'scheduled',
     refereeId: 'ref-1',
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
 ];
 
@@ -139,6 +258,8 @@ export const mockCaptainGames: Game[] = [
     time: '14:00',
     venue: 'Main Stadium - Field A',
     status: 'scheduled',
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
   {
     id: 'cg2',
@@ -148,6 +269,8 @@ export const mockCaptainGames: Game[] = [
     time: '16:00',
     venue: 'South Field',
     status: 'scheduled',
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
   {
     id: 'cg3',
@@ -159,6 +282,8 @@ export const mockCaptainGames: Game[] = [
     status: 'completed',
     homeScore: 3,
     awayScore: 1,
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
   {
     id: 'cg4',
@@ -170,6 +295,8 @@ export const mockCaptainGames: Game[] = [
     status: 'completed',
     homeScore: 2,
     awayScore: 2,
+    leagueId: 'wed-league',
+    divisionId: 'wed-div1',
   },
 ];
 
@@ -285,4 +412,87 @@ export const mockTeamStats = {
   goalsFor: 18,
   goalsAgainst: 9,
   points: 17,
+};
+
+// Venues
+export const mockVenues = [
+  'Main Stadium - Field A',
+  'Main Stadium - Field B',
+  'South Field',
+  'North Field',
+  'West Practice Field',
+  'Indoor Arena',
+];
+
+// Helper function to generate round-robin fixtures
+export const generateRoundRobinFixtures = (
+  teamIds: string[],
+  leagueId: string,
+  divisionId: string,
+  startDate: Date,
+  defaultTime: string,
+  defaultVenue: string,
+  dayOfWeek: number // 0=Sunday, 3=Wednesday, 6=Saturday
+): Game[] => {
+  const teams = [...teamIds];
+  const games: Game[] = [];
+  
+  // Add bye if odd number of teams
+  if (teams.length % 2 !== 0) {
+    teams.push('BYE');
+  }
+  
+  const numTeams = teams.length;
+  const numRounds = numTeams - 1;
+  const matchesPerRound = numTeams / 2;
+  
+  // Get team names from IDs
+  const getTeamName = (id: string) => {
+    if (id === 'BYE') return 'BYE';
+    return mockTeams.find(t => t.id === id)?.name || id;
+  };
+  
+  // Calculate the first game date (next occurrence of the day)
+  const getNextDayOfWeek = (date: Date, targetDay: number): Date => {
+    const result = new Date(date);
+    const currentDay = result.getDay();
+    const daysUntilTarget = (targetDay - currentDay + 7) % 7;
+    result.setDate(result.getDate() + (daysUntilTarget === 0 ? 7 : daysUntilTarget));
+    return result;
+  };
+  
+  let gameDate = getNextDayOfWeek(startDate, dayOfWeek);
+  
+  for (let round = 0; round < numRounds; round++) {
+    for (let match = 0; match < matchesPerRound; match++) {
+      const home = teams[match];
+      const away = teams[numTeams - 1 - match];
+      
+      // Skip bye matches
+      if (home === 'BYE' || away === 'BYE') continue;
+      
+      games.push({
+        id: `gen-${leagueId}-${divisionId}-r${round + 1}-m${match + 1}`,
+        homeTeam: getTeamName(home),
+        awayTeam: getTeamName(away),
+        date: new Date(gameDate),
+        time: defaultTime,
+        venue: defaultVenue,
+        status: 'scheduled',
+        leagueId,
+        divisionId,
+        matchweek: round + 1,
+      });
+    }
+    
+    // Rotate teams (keep first team fixed)
+    const lastTeam = teams.pop()!;
+    teams.splice(1, 0, lastTeam);
+    
+    // Move to next week
+    gameDate = new Date(gameDate);
+    gameDate.setDate(gameDate.getDate() + 7);
+  }
+  
+  return games;
 };
