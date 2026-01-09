@@ -17,6 +17,7 @@ import {
   FileText,
   Menu,
   X,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   // Admin items
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard, roles: ['admin'] },
   { label: 'Leagues & Divisions', path: '/admin/leagues', icon: Trophy, roles: ['admin'] },
+  { label: 'Pitch Availability', path: '/admin/pitches', icon: MapPin, roles: ['admin'] },
   { label: 'Manage Games', path: '/admin/games', icon: Calendar, roles: ['admin'] },
   { label: 'Approvals', path: '/admin/approvals', icon: CheckSquare, roles: ['admin'] },
   { label: 'Emergency Control', path: '/admin/emergency', icon: AlertTriangle, roles: ['admin'] },
