@@ -28,6 +28,7 @@ import AdminApprovals from "./pages/admin/AdminApprovals";
 import ManageGames from "./pages/admin/ManageGames";
 import LeagueManagement from "./pages/admin/LeagueManagement";
 import PitchManagement from "./pages/admin/PitchManagement";
+import RefereeManagement from "./pages/admin/RefereeManagement";
 import EmergencyControl from "./pages/admin/EmergencyControl";
 
 const queryClient = new QueryClient();
@@ -145,6 +146,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <PitchManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/referees"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <RefereeManagement />
           </ProtectedRoute>
         }
       />

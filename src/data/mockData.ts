@@ -9,6 +9,13 @@ export interface Notification {
   read: boolean;
 }
 
+export interface Referee {
+  id: string;
+  username: string;
+  registeredAt: Date;
+  status: 'active' | 'inactive';
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -76,6 +83,18 @@ export interface FriendlyPost {
   contactName: string;
   postedAt: Date;
 }
+
+// Mock Referees
+export const mockReferees: Referee[] = [
+  { id: 'ref-1', username: 'marcus_chen', registeredAt: new Date('2024-09-15'), status: 'active' },
+  { id: 'ref-2', username: 'david_wilson', registeredAt: new Date('2024-09-20'), status: 'active' },
+  { id: 'ref-3', username: 'emma_roberts', registeredAt: new Date('2024-10-01'), status: 'active' },
+  { id: 'ref-4', username: 'lucas_garcia', registeredAt: new Date('2024-10-10'), status: 'active' },
+  { id: 'ref-5', username: 'olivia_patel', registeredAt: new Date('2024-10-15'), status: 'active' },
+  { id: 'ref-6', username: 'noah_kim', registeredAt: new Date('2024-11-01'), status: 'inactive' },
+  { id: 'ref-7', username: 'ava_nguyen', registeredAt: new Date('2024-11-10'), status: 'active' },
+  { id: 'ref-8', username: 'liam_jones', registeredAt: new Date('2024-11-20'), status: 'active' },
+];
 
 // Mock Teams
 export const mockTeams: Team[] = [

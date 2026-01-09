@@ -45,6 +45,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard, roles: ['admin'] },
   { label: 'Leagues & Divisions', path: '/admin/leagues', icon: Trophy, roles: ['admin'] },
   { label: 'Pitch Availability', path: '/admin/pitches', icon: MapPin, roles: ['admin'] },
+  { label: 'Referees', path: '/admin/referees', icon: Users, roles: ['admin'] },
   { label: 'Manage Games', path: '/admin/games', icon: Calendar, roles: ['admin'] },
   { label: 'Approvals', path: '/admin/approvals', icon: CheckSquare, roles: ['admin'] },
   { label: 'Emergency Control', path: '/admin/emergency', icon: AlertTriangle, roles: ['admin'] },
