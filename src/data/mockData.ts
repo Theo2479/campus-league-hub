@@ -414,15 +414,90 @@ export const mockTeamStats = {
   points: 17,
 };
 
-// Venues
-export const mockVenues = [
-  'Main Stadium - Field A',
-  'Main Stadium - Field B',
-  'South Field',
-  'North Field',
-  'West Practice Field',
-  'Indoor Arena',
+// Pitch and Availability Types
+export interface Pitch {
+  id: string;
+  name: string;
+  location: string;
+  capacity: number; // max concurrent games
+}
+
+export interface PitchSlot {
+  id: string;
+  pitchId: string;
+  date: string; // YYYY-MM-DD format
+  startTime: string;
+  endTime: string;
+  isBooked: boolean;
+  gameId?: string;
+}
+
+// Mock Pitches
+export const mockPitches: Pitch[] = [
+  { id: 'pitch-1', name: 'Main Stadium - Field A', location: 'Central Campus', capacity: 1 },
+  { id: 'pitch-2', name: 'Main Stadium - Field B', location: 'Central Campus', capacity: 1 },
+  { id: 'pitch-3', name: 'South Field', location: 'South Campus', capacity: 1 },
+  { id: 'pitch-4', name: 'North Field', location: 'North Campus', capacity: 1 },
+  { id: 'pitch-5', name: 'West Practice Field', location: 'West Campus', capacity: 1 },
+  { id: 'pitch-6', name: 'Indoor Arena', location: 'Sports Center', capacity: 1 },
 ];
+
+// Generate mock pitch slots for the next 8 weeks
+export const generateMockPitchSlots = (): PitchSlot[] => {
+  const slots: PitchSlot[] = [];
+  const today = new Date();
+  
+  mockPitches.forEach(pitch => {
+    for (let week = 0; week < 8; week++) {
+      // Wednesday slots
+      const wed = new Date(today);
+      wed.setDate(today.getDate() + ((3 - today.getDay() + 7) % 7) + (week * 7));
+      ['18:00', '19:30', '21:00'].forEach((time, idx) => {
+        slots.push({
+          id: `${pitch.id}-wed-${week}-${idx}`,
+          pitchId: pitch.id,
+          date: wed.toISOString().split('T')[0],
+          startTime: time,
+          endTime: time === '18:00' ? '19:30' : time === '19:30' ? '21:00' : '22:30',
+          isBooked: false,
+        });
+      });
+      
+      // Saturday slots
+      const sat = new Date(today);
+      sat.setDate(today.getDate() + ((6 - today.getDay() + 7) % 7) + (week * 7));
+      ['10:00', '12:00', '14:00', '16:00'].forEach((time, idx) => {
+        slots.push({
+          id: `${pitch.id}-sat-${week}-${idx}`,
+          pitchId: pitch.id,
+          date: sat.toISOString().split('T')[0],
+          startTime: time,
+          endTime: time === '10:00' ? '12:00' : time === '12:00' ? '14:00' : time === '14:00' ? '16:00' : '18:00',
+          isBooked: false,
+        });
+      });
+      
+      // Sunday slots
+      const sun = new Date(today);
+      sun.setDate(today.getDate() + ((0 - today.getDay() + 7) % 7) + (week * 7));
+      ['10:00', '11:30', '13:00', '14:30'].forEach((time, idx) => {
+        slots.push({
+          id: `${pitch.id}-sun-${week}-${idx}`,
+          pitchId: pitch.id,
+          date: sun.toISOString().split('T')[0],
+          startTime: time,
+          endTime: time === '10:00' ? '11:30' : time === '11:30' ? '13:00' : time === '13:00' ? '14:30' : '16:00',
+          isBooked: false,
+        });
+      });
+    }
+  });
+  
+  return slots;
+};
+
+// Venues (legacy, for backwards compatibility)
+export const mockVenues = mockPitches.map(p => p.name);
 
 // Helper function to generate round-robin fixtures
 export const generateRoundRobinFixtures = (
