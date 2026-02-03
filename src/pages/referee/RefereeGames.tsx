@@ -1,20 +1,82 @@
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockRefereeGames } from '@/data/mockData';
-import { Calendar, MapPin, Clock, MessageCircle, X, Trophy } from 'lucide-react';
+import { Calendar, MapPin, Clock, MessageCircle, X, Trophy, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { ScoreSubmissionDialog } from '@/components/referee/ScoreSubmissionDialog';
+
+// Define types matching the API response
+interface Game {
+  id: number;
+  home_team: string; // Adjusted to match API
+  away_team: string;
+  date: string;
+  time: string;
+  venue: string;
+  status: string;
+  home_score?: number;
+  away_score?: number;
+}
 
 const RefereeGames = () => {
-  const handleDropOut = (gameId: string) => {
-    toast.info('Drop out request submitted. You will be notified once a replacement is found.');
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
+
+  const fetchGames = async () => {
+    try {
+      const response = await fetch('/api/referee/my-games', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        // The API returns { assigned: [], interested: [] }
+        // We want to show 'assigned' games here primarily
+        setGames(data.assigned);
+      }
+    } catch (error) {
+      console.error('Failed to fetch games', error);
+      toast.error('Failed to load games');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleChat = (gameId: string) => {
+  useEffect(() => {
+    fetchGames();
+  }, []);
+
+  const handleDropOut = async (gameId: number) => {
+    if (!confirm("Are you sure you want to drop out? This will notify the league admin.")) return;
+
+    try {
+      const res = await fetch(`/api/referee/games/${gameId}/dropout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        toast.success('You have dropped out of the game. Notification sent.');
+        fetchGames();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to drop out');
+      }
+    } catch (e) {
+      toast.error('Error processing request');
+    }
+  };
+
+  const handleChat = (gameId: number) => {
     toast.info('Opening team chat...');
+  };
+
+  const openScoreDialog = (game: Game) => {
+    setSelectedGame(game);
+    setIsScoreDialogOpen(true);
   };
 
   return (
@@ -25,7 +87,7 @@ const RefereeGames = () => {
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {mockRefereeGames.map((game, index) => (
+        {games.map((game, index) => (
           <Card
             key={game.id}
             variant="elevated"
@@ -40,16 +102,22 @@ const RefereeGames = () => {
                   </div>
                   <div>
                     <CardTitle className="text-lg">
-                      {game.homeTeam}
+                      {game.home_team}
                       <span className="text-muted-foreground mx-2 font-normal">vs</span>
-                      {game.awayTeam}
+                      {game.away_team}
                     </CardTitle>
                     <CardDescription>League Match</CardDescription>
                   </div>
                 </div>
-                <Badge variant="secondary" className="bg-gold/10 text-gold border-gold/30">
-                  Assigned
-                </Badge>
+                {game.status === 'cancelled' ? (
+                  <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20">
+                    Cancelled
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-gold/10 text-gold border-gold/30">
+                    {game.status === 'completed' ? 'Completed' : 'Assigned'}
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -57,7 +125,7 @@ const RefereeGames = () => {
                 <div className="flex items-center gap-3 text-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-foreground">
-                    {format(game.date, 'EEEE, MMMM d, yyyy')}
+                    {format(new Date(game.date), 'EEEE, MMMM d, yyyy')}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
@@ -68,32 +136,63 @@ const RefereeGames = () => {
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-foreground">{game.venue}</span>
                 </div>
+                {game.status === 'completed' && (
+                  <div className="flex items-center gap-3 text-sm font-bold text-navy">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Result: {game.home_score} - {game.away_score}</span>
+                  </div>
+                )}
+                {game.status === 'cancelled' && (
+                  <div className="flex items-center gap-3 text-sm font-bold text-destructive">
+                    <XCircle className="h-4 w-4" />
+                    <span>Game Cancelled - Do Not Attend</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-border">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleChat(game.id)}
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Team Chat
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => handleDropOut(game.id)}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Drop Out
-                </Button>
+                {game.status === 'cancelled' ? (
+                  <Button
+                    variant="ghost"
+                    className="flex-1 text-muted-foreground cursor-not-allowed"
+                    disabled
+                  >
+                    No Actions Available
+                  </Button>
+                ) : game.status !== 'completed' ? (
+                  <>
+                    <Button
+                      className="flex-1 bg-navy hover:bg-navy/90"
+                      onClick={() => openScoreDialog(game)}
+                    >
+                      Report Score
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => handleDropOut(game.id)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Drop Out
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleChat(game.id)}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    See Chat
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {mockRefereeGames.length === 0 && (
+      {!loading && games.length === 0 && (
         <Card variant="elevated">
           <CardContent className="p-12 text-center">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -103,6 +202,17 @@ const RefereeGames = () => {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {selectedGame && (
+        <ScoreSubmissionDialog
+          isOpen={isScoreDialogOpen}
+          onOpenChange={setIsScoreDialogOpen}
+          gameId={selectedGame.id}
+          homeTeamName={selectedGame.home_team}
+          awayTeamName={selectedGame.away_team}
+          onSuccess={fetchGames}
+        />
       )}
     </DashboardLayout>
   );

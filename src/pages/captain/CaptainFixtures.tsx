@@ -1,27 +1,103 @@
+import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockCaptainGames, mockTeamStats, Game } from '@/data/mockData';
-import { Calendar, Clock, MapPin, Trophy } from 'lucide-react';
-import { format, differenceInHours } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { Calendar, Clock, MapPin, Trophy, Loader2 } from 'lucide-react';
+import { format, differenceInHours, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const CaptainFixtures = () => {
-  const upcomingGames = mockCaptainGames.filter(g => g.status === 'scheduled');
-  const completedGames = mockCaptainGames.filter(g => g.status === 'completed');
+interface Fixture {
+  id: number;
+  home_team: string;
+  away_team: string;
+  date: string;
+  time: string;
+  venue: string;
+  status: string;
+  home_score: number | null;
+  away_score: number | null;
+  is_home: boolean;
+  result?: 'win' | 'loss' | 'draw';
+  referee?: string;
+}
 
-  const getActionButton = (game: Game) => {
-    const hoursUntil = differenceInHours(game.date, new Date());
+const CaptainFixtures = () => {
+  const { user } = useAuth();
+  const [upcomingGames, setUpcomingGames] = useState<Fixture[]>([]);
+  const [completedGames, setCompletedGames] = useState<Fixture[]>([]);
+  const [teamName, setTeamName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFixtures = async () => {
+      try {
+        const response = await fetch('/api/captain/fixtures', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUpcomingGames(data.upcoming || []);
+          setCompletedGames(data.past || []);
+          setTeamName(data.team_name || user?.team_name || '');
+        } else {
+          throw new Error('Failed to fetch fixtures');
+        }
+      } catch (error) {
+        console.error('Failed to fetch fixtures:', error);
+        toast.error('Failed to load fixtures');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFixtures();
+  }, [user]);
+
+  const handleForfeit = async (fixtureId: number) => {
+    if (!confirm("Are you sure you want to forfeit? This will record a 3-0 loss.")) return;
+
+    try {
+      const res = await fetch(`/api/captain/fixtures/${fixtureId}/forfeit`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        toast.success('Match forfeited');
+        // Refresh
+        window.location.reload();
+      } else {
+        toast.error('Failed to forfeit');
+      }
+    } catch (e) {
+      toast.error('Error processing forfeit');
+    }
+  };
+
+  const handlePostpone = async (fixtureId: number) => {
+    try {
+      const res = await fetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        toast.success('Postponement request submitted for review');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to submit request');
+      }
+    } catch (e) {
+      toast.error('Error submitting request');
+    }
+  };
+
+  const getActionButton = (fixture: Fixture) => {
+    const fixtureDate = parseISO(fixture.date);
+    const hoursUntil = differenceInHours(fixtureDate, new Date());
 
     if (hoursUntil > 72) {
       return (
         <Button
           size="sm"
           variant="outline"
-          onClick={() => toast.info('Postponement request submitted for review')}
+          onClick={() => handlePostpone(fixture.id)}
         >
           <Clock className="h-4 w-4 mr-1" />
           Request Postponement
@@ -33,14 +109,14 @@ const CaptainFixtures = () => {
       <Button
         size="sm"
         variant="destructive"
-        onClick={() => toast.warning('Forfeit submitted. You will receive a 0-3 loss.')}
+        onClick={() => handleForfeit(fixture.id)}
       >
         Forfeit Match
       </Button>
     );
   };
 
-  const GameCard = ({ game, showActions = false }: { game: Game; showActions?: boolean }) => (
+  const GameCard = ({ fixture, showActions = false }: { fixture: Fixture; showActions?: boolean }) => (
     <Card variant="elevated" className="animate-fade-in">
       <CardContent className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -50,64 +126,88 @@ const CaptainFixtures = () => {
             </div>
             <div>
               <p className="font-semibold text-foreground">
-                {game.homeTeam === mockTeamStats.teamName ? (
+                {fixture.is_home ? (
                   <>
-                    <span className="text-gold">{game.homeTeam}</span>
-                    {game.status === 'completed' && (
-                      <span className="mx-2">{game.homeScore}</span>
+                    <span className="text-gold">{fixture.home_team}</span>
+                    {fixture.status === 'completed' && (
+                      <span className="mx-2">{fixture.home_score}</span>
                     )}
                     <span className="text-muted-foreground mx-2">-</span>
-                    {game.status === 'completed' && (
-                      <span className="mx-2">{game.awayScore}</span>
+                    {fixture.status === 'completed' && (
+                      <span className="mx-2">{fixture.away_score}</span>
                     )}
-                    {game.awayTeam}
+                    {fixture.away_team}
                   </>
                 ) : (
                   <>
-                    {game.homeTeam}
-                    {game.status === 'completed' && (
-                      <span className="mx-2">{game.homeScore}</span>
+                    {fixture.home_team}
+                    {fixture.status === 'completed' && (
+                      <span className="mx-2">{fixture.home_score}</span>
                     )}
                     <span className="text-muted-foreground mx-2">-</span>
-                    {game.status === 'completed' && (
-                      <span className="mx-2">{game.awayScore}</span>
+                    {fixture.status === 'completed' && (
+                      <span className="mx-2">{fixture.away_score}</span>
                     )}
-                    <span className="text-gold">{game.awayTeam}</span>
+                    <span className="text-gold">{fixture.away_team}</span>
                   </>
                 )}
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {format(game.date, 'MMM d, yyyy')}
+                  {format(parseISO(fixture.date), 'MMM d, yyyy')}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {game.time}
+                  {fixture.time || 'TBC'}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  {game.venue}
+                  {fixture.venue || 'TBC'}
                 </span>
+                {fixture.referee && (
+                  <span className="flex items-center gap-1 text-gold">
+                    <div className="h-3 w-3 rounded-full bg-gold/50" />
+                    Ref: {fixture.referee}
+                  </span>
+                )}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={game.homeTeam === mockTeamStats.teamName ? 'default' : 'secondary'}>
-              {game.homeTeam === mockTeamStats.teamName ? 'Home' : 'Away'}
+            <Badge variant={fixture.is_home ? 'default' : 'secondary'}>
+              {fixture.is_home ? 'Home' : 'Away'}
             </Badge>
-            {showActions && getActionButton(game)}
+            {fixture.result && (
+              <Badge
+                variant={fixture.result === 'win' ? 'default' : fixture.result === 'draw' ? 'secondary' : 'destructive'}
+                className={fixture.result === 'win' ? 'bg-success' : ''}
+              >
+                {fixture.result === 'win' ? 'Won' : fixture.result === 'draw' ? 'Draw' : 'Lost'}
+              </Badge>
+            )}
+            {showActions && getActionButton(fixture)}
           </div>
         </div>
       </CardContent>
     </Card>
   );
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <PageHeader
         title="Season Fixtures"
-        description={`${mockTeamStats.teamName} - Full season schedule`}
+        description={teamName ? `${teamName} - Full season schedule` : 'Full season schedule'}
       />
 
       <Tabs defaultValue="upcoming" className="space-y-6">
@@ -117,8 +217,8 @@ const CaptainFixtures = () => {
         </TabsList>
 
         <TabsContent value="upcoming" className="space-y-4">
-          {upcomingGames.map(game => (
-            <GameCard key={game.id} game={game} showActions />
+          {upcomingGames.map(fixture => (
+            <GameCard key={fixture.id} fixture={fixture} showActions />
           ))}
           {upcomingGames.length === 0 && (
             <Card variant="elevated">
@@ -134,8 +234,8 @@ const CaptainFixtures = () => {
         </TabsContent>
 
         <TabsContent value="completed" className="space-y-4">
-          {completedGames.map(game => (
-            <GameCard key={game.id} game={game} />
+          {completedGames.map(fixture => (
+            <GameCard key={fixture.id} fixture={fixture} />
           ))}
           {completedGames.length === 0 && (
             <Card variant="elevated">

@@ -1,33 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockPostponementRequests, PostponementRequest } from '@/data/mockData';
 import { CheckSquare, CheckCircle, XCircle, Clock, FileText } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+interface PostponementRequest {
+  id: number;
+  teamName: string;
+  fixture: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'denied';
+  submittedAt: string;
+  requestedDate: string;
+}
+
 const AdminApprovals = () => {
-  const [requests, setRequests] = useState<PostponementRequest[]>(mockPostponementRequests);
+  const [requests, setRequests] = useState<PostponementRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRequests = async () => {
+    try {
+      const res = await fetch('/api/admin/approvals', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data.requests || []);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
 
-  const handleApprove = (id: string) => {
-    setRequests(prev =>
-      prev.map(r => (r.id === id ? { ...r, status: 'approved' as const } : r))
-    );
-    toast.success('Request approved. Teams have been notified.');
+  const handleApprove = async (id: number) => {
+    try {
+      const res = await fetch(`/api/admin/approvals/${id}/approve`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        toast.success('Request approved. Teams have been notified.');
+        fetchRequests();
+      } else {
+        toast.error('Failed to approve');
+      }
+    } catch (e) {
+      toast.error('Error processing request');
+    }
   };
 
-  const handleDeny = (id: string) => {
-    setRequests(prev =>
-      prev.map(r => (r.id === id ? { ...r, status: 'denied' as const } : r))
-    );
-    toast.error('Request denied. Teams have been notified.');
+  const handleDeny = async (id: number) => {
+    try {
+      const res = await fetch(`/api/admin/approvals/${id}/deny`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        toast.success('Request denied. Teams have been notified.');
+        fetchRequests();
+      } else {
+        toast.error('Failed to deny');
+      }
+    } catch (e) {
+      toast.error('Error processing request');
+    }
   };
 
   const RequestCard = ({
@@ -42,8 +85,8 @@ const AdminApprovals = () => {
         request.status === 'pending'
           ? 'elevated'
           : request.status === 'approved'
-          ? 'success'
-          : 'urgent'
+            ? 'success'
+            : 'urgent'
       }
       className="animate-fade-in"
     >
@@ -52,13 +95,12 @@ const AdminApprovals = () => {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                  request.status === 'pending'
-                    ? 'bg-gold/20 text-gold'
-                    : request.status === 'approved'
+                className={`flex h-10 w-10 items-center justify-center rounded-lg ${request.status === 'pending'
+                  ? 'bg-gold/20 text-gold'
+                  : request.status === 'approved'
                     ? 'bg-success/20 text-success'
                     : 'bg-destructive/20 text-destructive'
-                }`}
+                  }`}
               >
                 <FileText className="h-5 w-5" />
               </div>
@@ -72,8 +114,8 @@ const AdminApprovals = () => {
                 request.status === 'pending'
                   ? 'secondary'
                   : request.status === 'approved'
-                  ? 'default'
-                  : 'destructive'
+                    ? 'default'
+                    : 'destructive'
               }
               className={request.status === 'approved' ? 'bg-success' : ''}
             >
@@ -91,10 +133,10 @@ const AdminApprovals = () => {
 
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <span>
-              <strong>Requested Date:</strong> {format(request.requestedDate, 'MMMM d, yyyy')}
+              <strong>Requested Date:</strong> {format(parseISO(request.requestedDate), 'MMMM d, yyyy')}
             </span>
             <span>
-              <strong>Submitted:</strong> {format(request.submittedAt, 'MMM d, h:mm a')}
+              <strong>Submitted:</strong> {format(parseISO(request.submittedAt), 'MMM d, h:mm a')}
             </span>
           </div>
 

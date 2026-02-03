@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockNotifications, Notification } from '@/data/mockData';
 import { AlertTriangle, Info, CheckCircle, Bell, Check } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: 'urgent' | 'info' | 'success';
+  read: boolean;
+  timestamp: string;
+}
 
 const typeIcons = {
   urgent: AlertTriangle,
@@ -22,19 +30,52 @@ const typeStyles = {
 };
 
 const Notifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // Poll for notifications every 30s
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch(`/api/notifications/${id}/read`, { method: 'POST', credentials: 'include' });
+      setNotifications(prev =>
+        prev.map(n => (n.id === parseInt(id) ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    toast.success('All notifications marked as read');
+  const markAllAsRead = async () => {
+    try {
+      await fetch('/api/notifications/mark-all-read', { method: 'POST', credentials: 'include' });
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      toast.error('Failed to mark all as read');
+    }
   };
 
   return (
@@ -92,7 +133,7 @@ const Notifications = () => {
                       {notification.message}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                      {formatDistanceToNow(parseISO(notification.timestamp), { addSuffix: true })}
                     </p>
                   </div>
                 </div>

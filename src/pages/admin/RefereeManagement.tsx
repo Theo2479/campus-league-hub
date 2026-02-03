@@ -1,7 +1,11 @@
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -10,83 +14,328 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockReferees, Referee } from '@/data/mockData';
-import { Users } from 'lucide-react';
-import { format } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Users, Plus, Trash2, Loader2, UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Referee {
+  id: number;
+  username: string;
+  name: string;
+  phone: string;
+  games_reffed: number;
+  games_assigned: number;
+  availability_submissions: number;
+}
 
 const RefereeManagement = () => {
-  const activeCount = mockReferees.filter((r) => r.status === 'active').length;
-  const inactiveCount = mockReferees.filter((r) => r.status === 'inactive').length;
+  const [referees, setReferees] = useState<Referee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [refToDelete, setRefToDelete] = useState<Referee | null>(null);
+
+  // Form state
+  const [newUsername, setNewUsername] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchReferees = async () => {
+    try {
+      const res = await fetch('/api/admin/referees', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setReferees(data.referees || []);
+      } else {
+        toast.error('Failed to load referees');
+      }
+    } catch (error) {
+      console.error('Error fetching referees:', error);
+      toast.error('Failed to load referees');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReferees();
+  }, []);
+
+  const handleCreateReferee = async () => {
+    if (!newUsername.trim()) {
+      toast.error('Username is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/referees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: newUsername.trim(),
+          name: newName.trim() || newUsername.trim(),
+          phone: newPhone.trim(),
+          password: newPassword.trim() || 'referee123'
+        })
+      });
+
+      if (res.ok) {
+        toast.success('Referee account created successfully');
+        setIsAddDialogOpen(false);
+        setNewUsername('');
+        setNewName('');
+        setNewPhone('');
+        setNewPassword('');
+        fetchReferees();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to create referee');
+      }
+    } catch (error) {
+      console.error('Error creating referee:', error);
+      toast.error('Failed to create referee');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteReferee = async () => {
+    if (!refToDelete) return;
+
+    try {
+      const res = await fetch(`/api/admin/referees/${refToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        toast.success('Referee deleted successfully');
+        setDeleteDialogOpen(false);
+        setRefToDelete(null);
+        fetchReferees();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to delete referee');
+      }
+    } catch (error) {
+      console.error('Error deleting referee:', error);
+      toast.error('Failed to delete referee');
+    }
+  };
+
+  const openDeleteDialog = (referee: Referee) => {
+    setRefToDelete(referee);
+    setDeleteDialogOpen(true);
+  };
 
   return (
     <DashboardLayout>
       <PageHeader
         title="Registered Referees"
-        description="View all referees registered on the platform"
+        description="Manage referee accounts on the platform"
       />
 
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
-        <Card>
+      <div className="flex justify-between items-center mb-6">
+        <Card className="flex-1 mr-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Referees</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockReferees.length}</div>
+            <div className="text-2xl font-bold">{referees.length}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <Badge variant="default" className="bg-green-600">Active</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive</CardTitle>
-            <Badge variant="secondary">Inactive</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inactiveCount}</div>
-          </CardContent>
-        </Card>
+
+        <Button onClick={() => setIsAddDialogOpen(true)} className="bg-gold hover:bg-gold/90 text-black">
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add Referee
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>All Registered Referees</CardTitle>
+          <CardDescription>
+            Referees can log in with their credentials and manage their availability
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Registered</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockReferees.map((referee: Referee) => (
-                <TableRow key={referee.id}>
-                  <TableCell className="font-medium">{referee.username}</TableCell>
-                  <TableCell>{format(referee.registeredAt, 'dd MMM yyyy')}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={referee.status === 'active' ? 'default' : 'secondary'}
-                      className={referee.status === 'active' ? 'bg-green-600' : ''}
-                    >
-                      {referee.status}
-                    </Badge>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gold" />
+            </div>
+          ) : referees.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No referees registered yet.</p>
+              <p className="text-sm mt-1">Click "Add Referee" to create the first referee account.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="text-center" title="Games marked as Completed">Games Reffed</TableHead>
+                  <TableHead className="text-center" title="Total games currently assigned">Assigned</TableHead>
+                  <TableHead className="text-center" title="Number of availability slots submitted">Availability</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {referees.map((referee) => (
+                  <TableRow key={referee.id}>
+                    <TableCell className="font-medium">{referee.username}</TableCell>
+                    <TableCell>{referee.name || '-'}</TableCell>
+                    <TableCell>{referee.phone || '-'}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200 border-green-200">
+                        {referee.games_reffed}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm font-medium">{referee.games_assigned}</span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm text-muted-foreground">{referee.availability_submissions} slots</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => openDeleteDialog(referee)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      {/* Add Referee Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Referee</DialogTitle>
+            <DialogDescription>
+              Create a new referee account. The referee can use these credentials to log in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username *</Label>
+              <Input
+                id="username"
+                placeholder="e.g. jsmith"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g. John Smith"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                placeholder="e.g. 07700 900000"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Leave blank for default: referee123"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Default password is "referee123" if left blank
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateReferee}
+              disabled={isSubmitting}
+              className="bg-gold hover:bg-gold/90 text-black"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Referee
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Referee?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {refToDelete?.name || refToDelete?.username}?
+              This will remove their account and unassign them from any fixtures. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRefToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteReferee}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

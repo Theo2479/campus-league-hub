@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,10 +6,40 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockTeams, mockLeagues, mockVenues, League, Division, Team, Game, generateRoundRobinFixtures } from '@/data/mockData';
-import { Plus, Calendar, Users, Trophy, Trash2, Wand2, ChevronDown, ChevronRight } from 'lucide-react';
+// Interfaces
+interface Team {
+  id: string;
+  name: string;
+  divisionId?: string;
+}
+
+interface Division {
+  id: string;
+  name: string;
+  leagueId: string;
+  teams: string[]; // Team IDs
+}
+
+interface League {
+  id: string;
+  name: string;
+  day: string;
+  divisions: Division[];
+}
+
+interface Game {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: Date;
+  time: string;
+  venue: string;
+  matchweek?: number;
+}
+import { Plus, Calendar, Users, Trophy, Trash2, Wand2, ChevronDown, ChevronRight, Loader2, LayoutDashboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import DivisionOverview from '@/components/admin/DivisionOverview';
 import {
   Dialog,
   DialogContent,
@@ -24,77 +54,180 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const LeagueManagement = () => {
-  const [leagues, setLeagues] = useState<League[]>(mockLeagues);
-  const [availableTeams] = useState<Team[]>(mockTeams);
+  const [leagues, setLeagues] = useState<League[]>([]);
+  const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
   const [generatedGames, setGeneratedGames] = useState<Game[]>([]);
-  
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Dialog states
   const [isLeagueDialogOpen, setIsLeagueDialogOpen] = useState(false);
   const [isDivisionDialogOpen, setIsDivisionDialogOpen] = useState(false);
   const [isTeamAssignDialogOpen, setIsTeamAssignDialogOpen] = useState(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
-  
+  const [isGamesDialogOpen, setIsGamesDialogOpen] = useState(false);
+
+  // Delete confirmation dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteType, setDeleteType] = useState<'league' | 'division' | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
   // Form states
   const [newLeagueName, setNewLeagueName] = useState('');
   const [newLeagueDay, setNewLeagueDay] = useState<'Wednesday' | 'Saturday' | 'Sunday'>('Wednesday');
-  const [newLeagueTime, setNewLeagueTime] = useState('18:00');
-  const [newLeagueVenue, setNewLeagueVenue] = useState('');
-  
+
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const [newDivisionName, setNewDivisionName] = useState('');
-  
+
   const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
-  
-  const [generateStartDate, setGenerateStartDate] = useState('');
-  const [generateDivisionId, setGenerateDivisionId] = useState<string | null>(null);
-  
-  const [expandedLeagues, setExpandedLeagues] = useState<string[]>(leagues.map(l => l.id));
 
-  const getDayNumber = (day: 'Wednesday' | 'Saturday' | 'Sunday'): number => {
-    switch (day) {
-      case 'Wednesday': return 3;
-      case 'Saturday': return 6;
-      case 'Sunday': return 0;
-    }
-  };
+  // Generation State
+  const [generateStartDate, setGenerateStartDate] = useState('');
+  const [generateLeagueId, setGenerateLeagueId] = useState<string | null>(null);
+
+  // Games dialog state
+  const [viewingDivisionGames, setViewingDivisionGames] = useState<{
+    divisionId: string;
+    divisionName: string;
+    games: any[];
+  } | null>(null);
+  const [gamesLoading, setGamesLoading] = useState(false);
+
+  const [expandedLeagues, setExpandedLeagues] = useState<string[]>([]);
 
   const toggleLeagueExpanded = (leagueId: string) => {
-    setExpandedLeagues(prev => 
-      prev.includes(leagueId) 
+    setExpandedLeagues(prev =>
+      prev.includes(leagueId)
         ? prev.filter(id => id !== leagueId)
         : [...prev, leagueId]
     );
   };
 
-  const handleCreateLeague = () => {
-    if (!newLeagueName || !newLeagueVenue) {
+  // Fetch leagues on mount
+  useEffect(() => {
+    fetchLeagues();
+    fetchTeams();
+  }, []);
+
+  const fetchTeams = async () => {
+    try {
+      const res = await fetch('/api/admin/teams');
+      if (res.ok) {
+        const data = await res.json();
+        const teams = data.teams.map((t: any) => ({
+          ...t,
+          id: t.id.toString(),
+          divisionId: t.division_id ? t.division_id.toString() : null
+        }));
+        setAvailableTeams(teams);
+      }
+    } catch (e) {
+      console.error("Failed to fetch teams");
+    }
+  };
+
+  const fetchLeagues = async () => {
+    try {
+      const res = await fetch('/api/admin/leagues');
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.leagues.map((l: any) => ({
+          id: l.id.toString(),
+          name: l.name,
+          day: l.default_day || 'Wednesday',
+          divisions: l.divisions.map((d: any) => ({
+            id: d.id.toString(),
+            name: d.name,
+            leagueId: l.id.toString(),
+            teams: d.teams // IDs
+          }))
+        }));
+        setLeagues(mapped);
+        // Default expand first league
+        if (mapped.length > 0 && expandedLeagues.length === 0) {
+          setExpandedLeagues([mapped[0].id]);
+        }
+      }
+    } catch (e) {
+      toast.error("Failed to load leagues");
+    }
+  };
+
+  const handleCreateLeague = async () => {
+    if (!newLeagueName) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    const newLeague: League = {
-      id: `league-${Date.now()}`,
-      name: newLeagueName,
-      day: newLeagueDay,
-      defaultTime: newLeagueTime,
-      defaultVenue: newLeagueVenue,
-      divisions: [],
-    };
+    try {
+      const res = await fetch('/api/admin/leagues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newLeagueName,
+          day: newLeagueDay,
+        }),
+        credentials: 'include'
+      });
 
-    setLeagues(prev => [...prev, newLeague]);
-    setExpandedLeagues(prev => [...prev, newLeague.id]);
-    setIsLeagueDialogOpen(false);
-    setNewLeagueName('');
-    setNewLeagueVenue('');
-    toast.success(`${newLeagueName} created successfully`);
+      if (res.ok) {
+        toast.success(`${newLeagueName} created`);
+        setNewLeagueName('');
+        setIsLeagueDialogOpen(false);
+        fetchLeagues();
+      } else {
+        toast.error("Failed to create league");
+      }
+    } catch (e) {
+      toast.error("Error creating league");
+    }
   };
 
-  const handleDeleteLeague = (leagueId: string) => {
-    setLeagues(prev => prev.filter(l => l.id !== leagueId));
-    toast.success('League deleted');
+  const openDeleteDialog = (e: React.MouseEvent, type: 'league' | 'division', targetId: string, leagueId?: string) => {
+    e.stopPropagation();
+    setDeleteType(type);
+    setDeleteTargetId(targetId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId || !deleteType) return;
+
+    try {
+      let url = '';
+      if (deleteType === 'league') {
+        url = `/api/admin/leagues/${deleteTargetId}`;
+      } else {
+        url = `/api/admin/divisions/${deleteTargetId}`;
+      }
+
+      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
+
+      if (res.ok) {
+        toast.success(`${deleteType === 'league' ? 'League' : 'Division'} deleted`);
+        fetchLeagues();
+      } else {
+        toast.error(`Failed to delete ${deleteType}`);
+      }
+    } catch (e) {
+      toast.error(`Error deleting ${deleteType}`);
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteType(null);
+      setDeleteTargetId(null);
+    }
   };
 
   const openAddDivision = (leagueId: string) => {
@@ -103,35 +236,30 @@ const LeagueManagement = () => {
     setIsDivisionDialogOpen(true);
   };
 
-  const handleCreateDivision = () => {
+  const handleCreateDivision = async () => {
     if (!newDivisionName || !selectedLeagueId) {
       toast.error('Please enter a division name');
       return;
     }
 
-    const newDivision: Division = {
-      id: `div-${Date.now()}`,
-      name: newDivisionName,
-      leagueId: selectedLeagueId,
-      teams: [],
-    };
+    try {
+      const res = await fetch(`/api/admin/leagues/${selectedLeagueId}/divisions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newDivisionName }),
+        credentials: 'include'
+      });
 
-    setLeagues(prev => prev.map(l => 
-      l.id === selectedLeagueId 
-        ? { ...l, divisions: [...l.divisions, newDivision] }
-        : l
-    ));
-    setIsDivisionDialogOpen(false);
-    toast.success(`${newDivisionName} created`);
-  };
-
-  const handleDeleteDivision = (leagueId: string, divisionId: string) => {
-    setLeagues(prev => prev.map(l => 
-      l.id === leagueId 
-        ? { ...l, divisions: l.divisions.filter(d => d.id !== divisionId) }
-        : l
-    ));
-    toast.success('Division deleted');
+      if (res.ok) {
+        toast.success(`${newDivisionName} created`);
+        setIsDivisionDialogOpen(false);
+        fetchLeagues();
+      } else {
+        toast.error("Failed to create division");
+      }
+    } catch (e) {
+      toast.error("Error creating division");
+    }
   };
 
   const openAssignTeams = (division: Division) => {
@@ -141,26 +269,35 @@ const LeagueManagement = () => {
   };
 
   const handleTeamToggle = (teamId: string) => {
-    setSelectedTeamIds(prev => 
+    setSelectedTeamIds(prev =>
       prev.includes(teamId)
         ? prev.filter(id => id !== teamId)
         : [...prev, teamId]
     );
   };
 
-  const handleSaveTeamAssignment = () => {
+  const handleSaveTeamAssignment = async () => {
     if (!selectedDivision) return;
 
-    setLeagues(prev => prev.map(l => ({
-      ...l,
-      divisions: l.divisions.map(d => 
-        d.id === selectedDivision.id 
-          ? { ...d, teams: selectedTeamIds }
-          : d
-      ),
-    })));
-    setIsTeamAssignDialogOpen(false);
-    toast.success('Teams assigned successfully');
+    try {
+      const res = await fetch(`/api/admin/divisions/${selectedDivision.id}/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamIdentifiers: selectedTeamIds }),
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        toast.success('Teams assigned successfully');
+        setIsTeamAssignDialogOpen(false);
+        fetchLeagues();
+        fetchTeams();
+      } else {
+        toast.error("Failed to assign teams");
+      }
+    } catch (e) {
+      toast.error("Error assigning teams");
+    }
   };
 
   const getTeamName = (teamId: string) => {
@@ -171,7 +308,6 @@ const LeagueManagement = () => {
     const assigned: string[] = [];
     leagues.forEach(league => {
       league.divisions.forEach(div => {
-        // Exclude current division's teams when checking
         if (div.id !== selectedDivision?.id) {
           assigned.push(...div.teams);
         }
@@ -180,54 +316,65 @@ const LeagueManagement = () => {
     return assigned;
   };
 
-  const openGenerateFixtures = (divisionId: string) => {
-    setGenerateDivisionId(divisionId);
+  const openGenerateFixtures = (leagueId: string) => {
+    setGenerateLeagueId(leagueId);
     setGenerateStartDate('');
     setIsGenerateDialogOpen(true);
   };
 
-  const handleGenerateFixtures = () => {
-    if (!generateStartDate || !generateDivisionId) {
+  const handleGenerateFixtures = async () => {
+    if (!generateStartDate || !generateLeagueId) {
       toast.error('Please select a start date');
       return;
     }
 
-    // Find the division and league
-    let targetDivision: Division | null = null;
-    let targetLeague: League | null = null;
-    
-    for (const league of leagues) {
-      const div = league.divisions.find(d => d.id === generateDivisionId);
-      if (div) {
-        targetDivision = div;
-        targetLeague = league;
-        break;
+    setIsGenerating(true);
+
+    try {
+      const response = await fetch(`/api/leagues/${generateLeagueId}/generate-fixtures`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          date: generateStartDate
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate fixtures');
       }
+
+      const data = await response.json();
+      toast.success(data.message);
+
+      // Update UI with generated games if needed, or just notify logic
+      if (data.fixtures) {
+        setGeneratedGames(data.fixtures.map((f: any) => ({
+          id: f.id,
+          homeTeam: f.home_team,
+          awayTeam: f.away_team,
+          date: new Date(f.date),
+          time: f.time,
+          venue: f.venue,
+          matchweek: 1
+        })));
+      }
+      setIsGenerateDialogOpen(false);
+
+    } catch (error) {
+      console.error('Generation failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate fixtures');
+    } finally {
+      setIsGenerating(false);
     }
+  };
 
-    if (!targetDivision || !targetLeague) {
-      toast.error('Division not found');
-      return;
-    }
-
-    if (targetDivision.teams.length < 2) {
-      toast.error('Need at least 2 teams to generate fixtures');
-      return;
-    }
-
-    const fixtures = generateRoundRobinFixtures(
-      targetDivision.teams,
-      targetLeague.id,
-      targetDivision.id,
-      new Date(generateStartDate),
-      targetLeague.defaultTime,
-      targetLeague.defaultVenue,
-      getDayNumber(targetLeague.day)
-    );
-
-    setGeneratedGames(prev => [...prev, ...fixtures]);
-    setIsGenerateDialogOpen(false);
-    toast.success(`Generated ${fixtures.length} fixtures for ${targetDivision.name}`);
+  const openViewOverview = (divisionId: string, divisionName: string) => {
+    setViewingDivisionGames({ divisionId, divisionName, games: [] });
+    setIsGamesDialogOpen(true);
   };
 
   return (
@@ -238,7 +385,6 @@ const LeagueManagement = () => {
       />
 
       <div className="space-y-6">
-        {/* Actions */}
         <div className="flex gap-3">
           <Button variant="gold" onClick={() => setIsLeagueDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -246,11 +392,10 @@ const LeagueManagement = () => {
           </Button>
         </div>
 
-        {/* League Cards */}
         <div className="space-y-4">
           {leagues.map(league => (
             <Card key={league.id} variant="elevated">
-              <Collapsible 
+              <Collapsible
                 open={expandedLeagues.includes(league.id)}
                 onOpenChange={() => toggleLeagueExpanded(league.id)}
               >
@@ -258,7 +403,7 @@ const LeagueManagement = () => {
                   <div className="flex items-center justify-between">
                     <CollapsibleTrigger asChild>
                       <div className="flex items-center gap-3 cursor-pointer hover:opacity-80">
-                        {expandedLeagues.includes(league.id) 
+                        {expandedLeagues.includes(league.id)
                           ? <ChevronDown className="h-5 w-5 text-muted-foreground" />
                           : <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         }
@@ -268,25 +413,39 @@ const LeagueManagement = () => {
                             {league.name}
                           </CardTitle>
                           <CardDescription className="mt-1">
-                            {league.day}s at {league.defaultTime} • {league.defaultVenue} • {league.divisions.length} division(s)
+                            {league.day}s • {league.divisions.length} division(s)
                           </CardDescription>
                         </div>
                       </div>
                     </CollapsibleTrigger>
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="gold"
                         size="sm"
-                        onClick={() => openAddDivision(league.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openGenerateFixtures(league.id);
+                        }}
+                      >
+                        <Wand2 className="h-4 w-4 mr-1" />
+                        Generate Fixtures
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddDivision(league.id);
+                        }}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Add Division
                       </Button>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteLeague(league.id)}
+                        onClick={(e) => openDeleteDialog(e, 'league', league.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -310,11 +469,11 @@ const LeagueManagement = () => {
                                   <Users className="h-4 w-4 text-gold" />
                                   {division.name}
                                 </CardTitle>
-                                <Button 
-                                  variant="ghost" 
+                                <Button
+                                  variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteDivision(league.id, division.id)}
+                                  onClick={(e) => openDeleteDialog(e, 'division', division.id, league.id)}
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
@@ -324,7 +483,6 @@ const LeagueManagement = () => {
                               </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                              {/* Team List */}
                               <div className="flex flex-wrap gap-1">
                                 {division.teams.length === 0 ? (
                                   <span className="text-sm text-muted-foreground">No teams assigned</span>
@@ -337,27 +495,24 @@ const LeagueManagement = () => {
                                 )}
                               </div>
 
-                              {/* Actions */}
                               <div className="flex gap-2 pt-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="flex-1"
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => openAssignTeams(division)}
                                 >
                                   <Users className="h-3 w-3 mr-1" />
-                                  Assign Teams
+                                  Teams
                                 </Button>
-                                <Button 
-                                  variant="gold" 
-                                  size="sm" 
-                                  className="flex-1"
-                                  onClick={() => openGenerateFixtures(division.id)}
-                                  disabled={division.teams.length < 2}
+                                <Button
+                                  variant="gold"
+                                  size="sm"
+                                  onClick={() => openViewOverview(division.id, division.name)}
                                 >
-                                  <Wand2 className="h-3 w-3 mr-1" />
-                                  Generate
+                                  <LayoutDashboard className="h-3 w-3 mr-1" />
+                                  Overview
                                 </Button>
+                                {/* Removed individual Generate button */}
                               </div>
                             </CardContent>
                           </Card>
@@ -369,21 +524,8 @@ const LeagueManagement = () => {
               </Collapsible>
             </Card>
           ))}
-
-          {leagues.length === 0 && (
-            <Card variant="elevated">
-              <CardContent className="p-12 text-center">
-                <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">No Leagues Created</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Create a league to start organizing teams and fixtures
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        {/* Generated Fixtures Preview */}
         {generatedGames.length > 0 && (
           <Card variant="elevated">
             <CardHeader>
@@ -391,56 +533,43 @@ const LeagueManagement = () => {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gold" />
-                    Generated Fixtures
+                    Generated Fixtures (Preview)
                   </CardTitle>
-                  <CardDescription>{generatedGames.length} games ready to schedule</CardDescription>
+                  <CardDescription>{generatedGames.length} games scheduled across league</CardDescription>
                 </div>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => setGeneratedGames([])}
-                >
-                  Clear All
+                <Button variant="destructive" size="sm" onClick={() => setGeneratedGames([])}>
+                  Clear
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               <div className="max-h-[400px] overflow-y-auto space-y-2">
                 {generatedGames.map(game => (
-                  <div 
-                    key={game.id} 
-                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-                  >
+                  <div key={game.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                     <div>
-                      <p className="font-medium text-sm">
-                        {game.homeTeam} vs {game.awayTeam}
-                      </p>
+                      <p className="font-medium text-sm">{game.homeTeam} vs {game.awayTeam}</p>
                       <p className="text-xs text-muted-foreground">
-                        Week {game.matchweek} • {game.date.toLocaleDateString()} at {game.time} • {game.venue}
+                        {new Date(game.date).toLocaleDateString()} at {game.time} • {game.venue}
                       </p>
                     </div>
-                    <Badge variant="secondary">Matchweek {game.matchweek}</Badge>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
         )}
+
       </div>
 
-      {/* Create League Dialog */}
       <Dialog open={isLeagueDialogOpen} onOpenChange={setIsLeagueDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New League</DialogTitle>
-            <DialogDescription>
-              Set up a new league with its default day and venue
-            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>League Name</Label>
-              <Input 
+              <Input
                 placeholder="e.g., Wednesday League"
                 value={newLeagueName}
                 onChange={e => setNewLeagueName(e.target.value)}
@@ -459,27 +588,6 @@ const LeagueManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Default Time</Label>
-              <Input 
-                type="time"
-                value={newLeagueTime}
-                onChange={e => setNewLeagueTime(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Default Venue</Label>
-              <Select value={newLeagueVenue} onValueChange={setNewLeagueVenue}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select venue" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockVenues.map(venue => (
-                    <SelectItem key={venue} value={venue}>{venue}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsLeagueDialogOpen(false)}>Cancel</Button>
@@ -488,66 +596,43 @@ const LeagueManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Division Dialog */}
       <Dialog open={isDivisionDialogOpen} onOpenChange={setIsDivisionDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Division</DialogTitle>
-            <DialogDescription>
-              Create a new division within the league
-            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>Division Name</Label>
-              <Input 
-                placeholder="e.g., Division 1"
-                value={newDivisionName}
-                onChange={e => setNewDivisionName(e.target.value)}
-              />
+              <Input value={newDivisionName} onChange={e => setNewDivisionName(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDivisionDialogOpen(false)}>Cancel</Button>
-            <Button variant="gold" onClick={handleCreateDivision}>Add Division</Button>
+            <Button variant="gold" onClick={handleCreateDivision}>Add</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Assign Teams Dialog */}
       <Dialog open={isTeamAssignDialogOpen} onOpenChange={setIsTeamAssignDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign Teams to {selectedDivision?.name}</DialogTitle>
-            <DialogDescription>
-              Select teams to compete in this division
-            </DialogDescription>
+            <DialogTitle>Assign Teams</DialogTitle>
           </DialogHeader>
           <div className="max-h-[300px] overflow-y-auto py-4">
             <div className="space-y-2">
               {availableTeams.map(team => {
                 const assignedElsewhere = getAssignedTeamIds().includes(team.id);
                 return (
-                  <div 
-                    key={team.id} 
-                    className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 ${
-                      assignedElsewhere ? 'opacity-50' : ''
-                    }`}
-                  >
-                    <Checkbox 
+                  <div key={team.id} className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 ${assignedElsewhere ? 'opacity-50' : ''}`}>
+                    <Checkbox
                       id={team.id}
                       checked={selectedTeamIds.includes(team.id)}
                       onCheckedChange={() => handleTeamToggle(team.id)}
                       disabled={assignedElsewhere}
                     />
-                    <label 
-                      htmlFor={team.id} 
-                      className="flex-1 text-sm font-medium cursor-pointer"
-                    >
-                      {team.name}
-                      {assignedElsewhere && (
-                        <span className="text-xs text-muted-foreground ml-2">(assigned elsewhere)</span>
-                      )}
+                    <label htmlFor={team.id} className="flex-1 text-sm font-medium cursor-pointer">
+                      {team.name} {assignedElsewhere && <span className="text-xs text-muted-foreground ml-2">(assigned)</span>}
                     </label>
                   </div>
                 );
@@ -556,44 +641,76 @@ const LeagueManagement = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTeamAssignDialogOpen(false)}>Cancel</Button>
-            <Button variant="gold" onClick={handleSaveTeamAssignment}>
-              Save ({selectedTeamIds.length} teams)
+            <Button variant="gold" onClick={handleSaveTeamAssignment}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate League Fixtures</DialogTitle>
+            <DialogDescription>
+              This will generate round-robin fixtures for ALL divisions in this league, optimizing pitch usage to avoid clashes.
+              Existing future fixtures will be replaced.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input
+                type="date"
+                value={generateStartDate}
+                onChange={e => setGenerateStartDate(e.target.value)}
+              />
+            </div>
+            <div className="bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20 text-yellow-600 text-sm">
+              <strong>Note:</strong> Fixtures will be assigned to available pitch slots randomly to ensure fairness across divisions.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGenerateDialogOpen(false)}>Cancel</Button>
+            <Button variant="gold" onClick={handleGenerateFixtures} disabled={isGenerating}>
+              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
+              Generate All
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Generate Fixtures Dialog */}
-      <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
-        <DialogContent>
+      {/* Division Overview Dialog */}
+      <Dialog open={isGamesDialogOpen} onOpenChange={setIsGamesDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Generate Fixtures</DialogTitle>
-            <DialogDescription>
-              Choose a start date to generate round-robin fixtures
-            </DialogDescription>
+            <DialogTitle>Division Overview: {viewingDivisionGames?.divisionName}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Season Start Date</Label>
-              <Input 
-                type="date"
-                value={generateStartDate}
-                onChange={e => setGenerateStartDate(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Fixtures will be scheduled weekly starting from the first match day after this date
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsGenerateDialogOpen(false)}>Cancel</Button>
-            <Button variant="gold" onClick={handleGenerateFixtures}>
-              <Wand2 className="h-4 w-4 mr-2" />
-              Generate Fixtures
-            </Button>
-          </DialogFooter>
+          {viewingDivisionGames && (
+            <DivisionOverview
+              divisionId={viewingDivisionGames.divisionId}
+              divisionName={viewingDivisionGames.divisionName}
+            />
+          )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              {deleteType} and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </DashboardLayout>
   );
 };

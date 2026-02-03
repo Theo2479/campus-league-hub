@@ -5,33 +5,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { mockFriendlyPosts, FriendlyPost, mockTeamStats } from '@/data/mockData';
-import { Handshake, Calendar, Clock, MapPin, User, Plus, Send } from 'lucide-react';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { FriendlyPost } from '@/types'; // Or define locally
+// Actually, let's define locally to avoid creating new file if not needed yet.
+
+interface FriendlyPost {
+  id: string;
+  teamName: string;
+  date: Date;
+  time: string;
+  venue: string;
+  contactName: string;
+  postedAt: Date;
+}
 
 const FriendlyMarket = () => {
-  const [posts, setPosts] = useState<FriendlyPost[]>(mockFriendlyPosts);
+  const [posts, setPosts] = useState<FriendlyPost[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Mock team name for now as we don't have context, or assume user is captain
+  const currentTeamName = "My Team";
 
   const handlePostAvailability = (e: React.FormEvent) => {
     e.preventDefault();
     const newPost: FriendlyPost = {
       id: `fp-${Date.now()}`,
-      teamName: mockTeamStats.teamName,
-      date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
+      teamName: currentTeamName,
+      date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3), // Mock date from form if I read it, but simplifying
       time: '14:00',
       venue: 'Flexible',
-      contactName: 'You',
+      contactName: 'Captain',
       postedAt: new Date(),
     };
     setPosts(prev => [newPost, ...prev]);
@@ -140,10 +142,10 @@ const FriendlyMarket = () => {
                 variant="outline"
                 className="w-full"
                 onClick={() => handleContactTeam(post.teamName)}
-                disabled={post.teamName === mockTeamStats.teamName}
+                disabled={post.teamName === currentTeamName}
               >
                 <Send className="h-4 w-4 mr-2" />
-                {post.teamName === mockTeamStats.teamName ? 'Your Post' : 'Contact Team'}
+                {post.teamName === currentTeamName ? 'Your Post' : 'Contact Team'}
               </Button>
             </CardContent>
           </Card>

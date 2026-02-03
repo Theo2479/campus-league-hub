@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
+import Leaderboard from "./pages/Leaderboard";
 
 // Referee Pages
 import RefereeDashboard from "./pages/referee/RefereeDashboard";
@@ -20,30 +21,33 @@ import RefereeGames from "./pages/referee/RefereeGames";
 import CaptainDashboard from "./pages/captain/CaptainDashboard";
 import CaptainFixtures from "./pages/captain/CaptainFixtures";
 import FriendlyMarket from "./pages/captain/FriendlyMarket";
-import SubmitScores from "./pages/captain/SubmitScores";
+
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import ManageGames from "./pages/admin/ManageGames";
+import TeamManagement from "./pages/admin/TeamManagement";
 import LeagueManagement from "./pages/admin/LeagueManagement";
 import PitchManagement from "./pages/admin/PitchManagement";
 import RefereeManagement from "./pages/admin/RefereeManagement";
+import CaptainManagement from "./pages/admin/CaptainManagement";
 import EmergencyControl from "./pages/admin/EmergencyControl";
+import AdminAllocation from "./pages/admin/AdminAllocation";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) => {
   const { isAuthenticated, user } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
-  
+
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -115,14 +119,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/captain/scores"
-        element={
-          <ProtectedRoute allowedRoles={['captain']}>
-            <SubmitScores />
-          </ProtectedRoute>
-        }
-      />
+
 
       {/* Admin Routes */}
       <Route
@@ -158,10 +155,26 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/admin/captains"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <CaptainManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/games"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <ManageGames />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/teams"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <TeamManagement />
           </ProtectedRoute>
         }
       />
@@ -181,6 +194,14 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/admin/allocation"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminAllocation />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Common Routes */}
       <Route
@@ -188,6 +209,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Notifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/leaderboard"
+        element={
+          <ProtectedRoute>
+            <Leaderboard />
           </ProtectedRoute>
         }
       />

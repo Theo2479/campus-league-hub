@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,8 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Game } from '@/data/mockData';
-import { Plus, Calendar, Trophy, MapPin, Clock, Edit2, Trash2 } from 'lucide-react';
+interface Game {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: Date;
+  time: string;
+  venue: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'in-progress' | 'postponed';
+  homeScore?: number;
+  awayScore?: number;
+  refereeId?: string;
+}
+import { Plus, Calendar, Trophy, MapPin, Clock, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -20,17 +31,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-const mockTeams = [
-  'Engineering Eagles',
-  'Business Hawks',
-  'Law Lions',
-  'Medical Wolves',
-  'Arts Panthers',
-  'Science Tigers',
-  'Philosophy Foxes',
-  'History Hounds',
-];
+// Mock data removed in favor of API
+
 
 const mockVenues = [
   'Main Stadium - Field A',
@@ -41,53 +54,13 @@ const mockVenues = [
   'Indoor Arena',
 ];
 
-const initialGames: Game[] = [
-  {
-    id: 'ag1',
-    homeTeam: 'Engineering Eagles',
-    awayTeam: 'Business Hawks',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
-    time: '14:00',
-    venue: 'Main Stadium - Field A',
-    status: 'completed',
-    homeScore: 3,
-    awayScore: 1,
-  },
-  {
-    id: 'ag2',
-    homeTeam: 'Law Lions',
-    awayTeam: 'Medical Wolves',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-    time: '16:00',
-    venue: 'South Field',
-    status: 'completed',
-    homeScore: 2,
-    awayScore: 2,
-  },
-  {
-    id: 'ag3',
-    homeTeam: 'Arts Panthers',
-    awayTeam: 'Science Tigers',
-    date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
-    time: '10:00',
-    venue: 'North Field',
-    status: 'scheduled',
-  },
-  {
-    id: 'ag4',
-    homeTeam: 'Philosophy Foxes',
-    awayTeam: 'History Hounds',
-    date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5),
-    time: '14:00',
-    venue: 'West Practice Field',
-    status: 'scheduled',
-  },
-];
-
 const ManageGames = () => {
-  const [games, setGames] = useState<Game[]>(initialGames);
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
 
   // Form state
   const [homeTeam, setHomeTeam] = useState('');
@@ -99,6 +72,73 @@ const ManageGames = () => {
   const [homeScore, setHomeScore] = useState('');
   const [awayScore, setAwayScore] = useState('');
 
+  const [pitches, setPitches] = useState<{ id: number, name: string }[]>([]);
+  const [referees, setReferees] = useState<{ id: string, name: string }[]>([]);
+  const [availableTeams, setAvailableTeams] = useState<{ id: string, name: string }[]>([]);
+
+  // Form state additional
+  const [refereeId, setRefereeId] = useState('');
+
+  // Fetch games and pitches from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [gamesRes, pitchesRes, refereesRes, teamsRes] = await Promise.all([
+          fetch('/api/fixtures', { credentials: 'include' }),
+          fetch('/api/admin/pitches', { credentials: 'include' }),
+          fetch('/api/admin/referees', { credentials: 'include' }),
+          fetch('/api/admin/teams', { credentials: 'include' })
+        ]);
+
+        if (gamesRes.ok) {
+          const data = await gamesRes.json();
+          const mappedGames: Game[] = data.fixtures.map((f: any) => ({
+            id: f.id.toString(),
+            homeTeam: f.home_team,
+            awayTeam: f.away_team,
+            date: new Date(f.date),
+            time: f.time,
+            venue: f.venue,
+            status: f.status,
+            homeScore: f.home_score,
+            awayScore: f.away_score,
+            refereeId: f.ref_id ? f.ref_id.toString() : undefined
+          }));
+          setGames(mappedGames);
+        }
+
+        if (pitchesRes.ok) {
+          const data = await pitchesRes.json();
+          setPitches(data.pitches);
+        }
+
+        if (refereesRes.ok) {
+          const data = await refereesRes.json();
+          setReferees(data.referees.map((r: any) => ({
+            id: r.id.toString(),
+            name: r.name
+          })));
+        }
+
+        if (teamsRes.ok) {
+          const data = await teamsRes.json();
+          setAvailableTeams(data.teams.map((t: any) => ({
+            id: t.id ? t.id.toString() : '',
+            name: t.name
+          })));
+        }
+
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        toast.error('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const resetForm = () => {
     setHomeTeam('');
     setAwayTeam('');
@@ -108,6 +148,7 @@ const ManageGames = () => {
     setStatus('scheduled');
     setHomeScore('');
     setAwayScore('');
+    setRefereeId('');
     setEditingGame(null);
   };
 
@@ -126,10 +167,11 @@ const ManageGames = () => {
     setStatus(game.status);
     setHomeScore(game.homeScore?.toString() || '');
     setAwayScore(game.awayScore?.toString() || '');
+    setRefereeId(game.refereeId || '');
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!homeTeam || !awayTeam || !date || !time || !venue) {
       toast.error('Please fill in all required fields');
       return;
@@ -140,33 +182,80 @@ const ManageGames = () => {
       return;
     }
 
-    const gameData: Game = {
-      id: editingGame?.id || `ag-${Date.now()}`,
+    const payload = {
       homeTeam,
       awayTeam,
-      date: new Date(date),
+      date,
       time,
       venue,
       status,
       homeScore: homeScore ? parseInt(homeScore) : undefined,
       awayScore: awayScore ? parseInt(awayScore) : undefined,
+      refereeId: refereeId || null,
     };
 
-    if (editingGame) {
-      setGames(prev => prev.map(g => (g.id === editingGame.id ? gameData : g)));
-      toast.success('Game updated successfully');
-    } else {
-      setGames(prev => [...prev, gameData]);
-      toast.success('Game created successfully');
-    }
+    try {
+      let res;
+      if (editingGame) {
+        res = await fetch(`/api/admin/fixtures/${editingGame.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+      } else {
+        res = await fetch('/api/admin/fixtures', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+      }
 
-    setIsDialogOpen(false);
-    resetForm();
+      if (res.ok) {
+        toast.success(editingGame ? 'Game updated' : 'Game created');
+        setIsDialogOpen(false);
+        resetForm();
+        // Refetch games
+        // Ideally extract fetchGames to a function we can call again. 
+        // For now, reload page or hack trigger. 
+        // Better: update state yourself or re-trigger the useEffect (add dependency).
+        window.location.reload(); // Simple brute force for now to ensure state sync, or fix fetch
+        // Ideally: fetchGames(); 
+      } else {
+        toast.error("Failed to save game");
+      }
+    } catch (e) {
+      toast.error("Error saving game");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setGames(prev => prev.filter(g => g.id !== id));
-    toast.success('Game deleted');
+  const handleDeleteClick = (id: string) => {
+    setDeleteGameId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteGameId) return;
+
+    try {
+      const res = await fetch(`/api/admin/fixtures/${deleteGameId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        toast.success('Game deleted');
+        window.location.reload();
+      } else {
+        toast.error('Failed to delete game');
+      }
+    } catch (e) {
+      toast.error('Error deleting game');
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteGameId(null);
+    }
   };
 
   const scheduledGames = games.filter(g => g.status === 'scheduled');
@@ -186,6 +275,16 @@ const ManageGames = () => {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -218,9 +317,9 @@ const ManageGames = () => {
                       <SelectValue placeholder="Select team" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockTeams.map(team => (
-                        <SelectItem key={team} value={team}>
-                          {team}
+                      {availableTeams.map(team => (
+                        <SelectItem key={team.id} value={team.name}>
+                          {team.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -233,9 +332,9 @@ const ManageGames = () => {
                       <SelectValue placeholder="Select team" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockTeams.map(team => (
-                        <SelectItem key={team} value={team}>
-                          {team}
+                      {availableTeams.map(team => (
+                        <SelectItem key={team.id} value={team.name}>
+                          {team.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -271,9 +370,25 @@ const ManageGames = () => {
                     <SelectValue placeholder="Select venue" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockVenues.map(v => (
-                      <SelectItem key={v} value={v}>
-                        {v}
+                    {pitches.map(p => (
+                      <SelectItem key={p.id} value={p.name}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="referee">Referee</Label>
+                <Select value={refereeId} onValueChange={setRefereeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select referee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {referees.map(r => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -387,7 +502,7 @@ const ManageGames = () => {
                           size="icon"
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(game.id)}
+                          onClick={() => handleDeleteClick(game.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -448,7 +563,7 @@ const ManageGames = () => {
                           size="icon"
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(game.id)}
+                          onClick={() => handleDeleteClick(game.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -461,6 +576,23 @@ const ManageGames = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this game record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

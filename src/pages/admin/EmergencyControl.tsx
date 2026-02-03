@@ -5,19 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle, CloudRain, Wind, Snowflake, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+
+import { format } from 'date-fns';
+import { EmergencyCancelDialog } from '@/components/admin/EmergencyCancelDialog';
 
 const emergencyReasons = [
   { id: 'weather-rain', label: 'Heavy Rain/Flooding', icon: CloudRain },
@@ -28,21 +18,23 @@ const emergencyReasons = [
 
 const EmergencyControl = () => {
   const [emergencyTriggered, setEmergencyTriggered] = useState(false);
-  const [selectedReason, setSelectedReason] = useState<string | null>(null);
-  const [customMessage, setCustomMessage] = useState('');
+  const [showDialog, setShowDialog] = useState(false);
+  const [cancelledDate, setCancelledDate] = useState<Date | null>(null);
+  const [cancelCount, setCancelCount] = useState(0);
 
-  const handleEmergencyCancel = () => {
+  const handleEmergencySuccess = (count: number, date: Date) => {
     setEmergencyTriggered(true);
+    setCancelCount(count);
+    setCancelledDate(date);
     toast.error(
-      `EMERGENCY CANCELLATION TRIGGERED - All scheduled games cancelled. Notifications sent to all teams and referees.`,
+      `EMERGENCY CANCELLATION ACTIVE - ${count} games cancelled for ${format(date, 'MMM do')}.`,
       { duration: 5000 }
     );
   };
 
   const handleClearEmergency = () => {
     setEmergencyTriggered(false);
-    setSelectedReason(null);
-    setCustomMessage('');
+    setCancelledDate(null);
     toast.success('Emergency status cleared. Normal operations resumed.');
   };
 
@@ -62,22 +54,9 @@ const EmergencyControl = () => {
             <h2 className="text-2xl font-bold text-destructive mb-2">
               Emergency Cancellation Active
             </h2>
-            <p className="text-muted-foreground mb-6">
-              All scheduled games have been cancelled. Teams, referees, and staff have been notified via email and SMS.
+            <p className="text-sm text-muted-foreground">
+              All scheduled games for <strong>{cancelledDate ? format(cancelledDate, 'MMMM do, yyyy') : 'selected date'}</strong> have been cancelled ({cancelCount} total). Teams, referees, and staff have been notified via email and SMS.
             </p>
-            <div className="bg-secondary/50 rounded-lg p-4 mb-6">
-              <p className="text-sm text-muted-foreground">
-                <strong>Reason:</strong>{' '}
-                {selectedReason
-                  ? emergencyReasons.find(r => r.id === selectedReason)?.label
-                  : 'Manual trigger'}
-              </p>
-              {customMessage && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Message:</strong> {customMessage}
-                </p>
-              )}
-            </div>
             <Button variant="outline" size="lg" onClick={handleClearEmergency}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Clear Emergency Status
@@ -99,80 +78,20 @@ const EmergencyControl = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Reason Selection */}
-              <div className="space-y-3">
-                <Label>Select Reason (Optional)</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {emergencyReasons.map(reason => (
-                    <button
-                      key={reason.id}
-                      onClick={() =>
-                        setSelectedReason(selectedReason === reason.id ? null : reason.id)
-                      }
-                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
-                        selectedReason === reason.id
-                          ? 'border-destructive bg-destructive/10 text-destructive'
-                          : 'border-border hover:border-muted-foreground'
-                      }`}
-                    >
-                      <reason.icon className="h-6 w-6" />
-                      <span className="text-sm font-medium">{reason.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Custom Message */}
-              <div className="space-y-2">
-                <Label htmlFor="message">Additional Message (Optional)</Label>
-                <Textarea
-                  id="message"
-                  placeholder="Add any additional information for teams and referees..."
-                  value={customMessage}
-                  onChange={e => setCustomMessage(e.target.value)}
-                  rows={3}
-                />
+              <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
+                Clicking the button below will open the emergency dialog where you can select a specific date and reason for mass cancellation.
               </div>
 
               {/* The Big Red Button */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="danger" size="xl" className="w-full">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    Cancel All Games
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="h-5 w-5" />
-                      Confirm Emergency Cancellation
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-2">
-                      <p>This will immediately:</p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>Cancel ALL scheduled games for today and tomorrow</li>
-                        <li>Send email notifications to all team captains</li>
-                        <li>Send SMS alerts to all registered referees</li>
-                        <li>Update the public schedule</li>
-                      </ul>
-                      <p className="font-medium mt-4">
-                        This action should only be used for severe weather or genuine emergencies.
-                      </p>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleEmergencyCancel}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                      Confirm Emergency Cancel
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="danger"
+                size="xl"
+                className="w-full"
+                onClick={() => setShowDialog(true)}
+              >
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Cancel Games by Date
+              </Button>
             </CardContent>
           </Card>
 
@@ -197,6 +116,11 @@ const EmergencyControl = () => {
           </Card>
         </div>
       )}
+      <EmergencyCancelDialog
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        onSuccess={handleEmergencySuccess}
+      />
     </DashboardLayout>
   );
 };

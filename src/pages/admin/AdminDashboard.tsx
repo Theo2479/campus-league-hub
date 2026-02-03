@@ -1,49 +1,104 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockPostponementRequests, PostponementRequest } from '@/data/mockData';
 import { AlertTriangle, CheckCircle, XCircle, Clock, Users, Trophy, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { EmergencyCancelDialog } from '@/components/admin/EmergencyCancelDialog';
+
+interface PostponementRequest {
+  id: number;
+  teamName: string;
+  fixture: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'denied';
+  submittedAt: string;
+  requestedDate: string;
+}
 
 const AdminDashboard = () => {
-  const [requests, setRequests] = useState<PostponementRequest[]>(mockPostponementRequests);
+  const [requests, setRequests] = useState<PostponementRequest[]>([]);
   const [emergencyTriggered, setEmergencyTriggered] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+
+  const [stats, setStats] = useState({
+    activeTeams: 0,
+    activeRefs: 0,
+    weekGames: 0
+  });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [reqsRes, teamsRes, refsRes, gamesRes] = await Promise.all([
+          fetch('/api/admin/approvals', { credentials: 'include' }),
+          fetch('/api/admin/teams', { credentials: 'include' }),
+          fetch('/api/admin/referees', { credentials: 'include' }),
+          fetch('/api/fixtures', { credentials: 'include' }) // Assuming returns all games or I filter
+        ]);
+
+        if (reqsRes.ok) {
+          const data = await reqsRes.json();
+          setRequests(data.requests || []);
+        }
+
+        if (teamsRes.ok) {
+          const data = await teamsRes.json();
+          setStats(prev => ({ ...prev, activeTeams: data.teams?.length || 0 }));
+        }
+
+        if (refsRes.ok) {
+          const data = await refsRes.json();
+          setStats(prev => ({ ...prev, activeRefs: data.referees?.length || 0 }));
+        }
+
+        if (gamesRes.ok) {
+          const data = await gamesRes.json();
+          // Filter for this week games roughly or just total for now
+          const games = data.fixtures || [];
+          setStats(prev => ({ ...prev, weekGames: games.length }));
+        }
+
+      } catch (e) {
+        console.error("Failed to fetch dashboard data", e);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
-  const handleApprove = (id: string) => {
-    setRequests(prev =>
-      prev.map(r => (r.id === id ? { ...r, status: 'approved' as const } : r))
-    );
-    toast.success('Request approved successfully');
+  const handleApprove = async (id: number) => {
+    try {
+      const res = await fetch(`/api/admin/approvals/${id}/approve`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' } : r));
+        toast.success('Request approved successfully');
+      }
+    } catch (e) {
+      toast.error('Failed to approve');
+    }
   };
 
-  const handleDeny = (id: string) => {
-    setRequests(prev =>
-      prev.map(r => (r.id === id ? { ...r, status: 'denied' as const } : r))
-    );
-    toast.error('Request denied');
+  const handleDeny = async (id: number) => {
+    try {
+      const res = await fetch(`/api/admin/approvals/${id}/deny`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'denied' } : r));
+        toast.success('Request denied');
+      }
+    } catch (e) {
+      toast.error('Failed to deny');
+    }
   };
 
-  const handleEmergencyCancel = () => {
+  const handleEmergencySuccess = (count: number, date: Date) => {
     setEmergencyTriggered(true);
-    toast.error('EMERGENCY CANCELLATION TRIGGERED - All teams and referees notified', {
+    toast.error(`EMERGENCY CANCELLATION ACTIVE - ${count} games cancelled for ${format(date, 'MMM do')}.`, {
       duration: 5000,
     });
   };
@@ -64,17 +119,17 @@ const AdminDashboard = () => {
         />
         <StatCard
           label="Active Teams"
-          value={12}
+          value={stats.activeTeams}
           icon={<Trophy className="h-6 w-6" />}
         />
         <StatCard
           label="Active Referees"
-          value={8}
+          value={stats.activeRefs}
           icon={<Users className="h-6 w-6" />}
         />
         <StatCard
-          label="This Week's Games"
-          value={15}
+          label="Total Games"
+          value={stats.weekGames}
           icon={<Calendar className="h-6 w-6" />}
         />
       </div>
@@ -113,36 +168,15 @@ const AdminDashboard = () => {
                 </Button>
               </div>
             ) : (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="danger" size="xl" className="w-full">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    Emergency Cancel All Games
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="h-5 w-5" />
-                      Confirm Emergency Cancellation
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will immediately cancel ALL scheduled games and notify all teams,
-                      referees, and players. This action should only be used for severe
-                      weather or genuine emergencies.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleEmergencyCancel}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Confirm Emergency Cancel
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="danger"
+                size="xl"
+                className="w-full"
+                onClick={() => setShowCancelDialog(true)}
+              >
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Emergency Cancel Games
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -164,8 +198,8 @@ const AdminDashboard = () => {
                   request.status === 'pending'
                     ? 'default'
                     : request.status === 'approved'
-                    ? 'success'
-                    : 'urgent'
+                      ? 'success'
+                      : 'urgent'
                 }
                 className="animate-fade-in"
               >
@@ -180,8 +214,8 @@ const AdminDashboard = () => {
                               request.status === 'pending'
                                 ? 'secondary'
                                 : request.status === 'approved'
-                                ? 'default'
-                                : 'destructive'
+                                  ? 'default'
+                                  : 'destructive'
                             }
                             className={request.status === 'approved' ? 'bg-success' : ''}
                           >
@@ -190,8 +224,8 @@ const AdminDashboard = () => {
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{request.reason}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Requested: {format(request.requestedDate, 'MMMM d, yyyy')} •
-                          Submitted: {format(request.submittedAt, 'MMM d, h:mm a')}
+                          Requested: {format(parseISO(request.requestedDate), 'MMMM d, yyyy')} •
+                          Submitted: {format(parseISO(request.submittedAt), 'MMM d, h:mm a')}
                         </p>
                       </div>
                     </div>
@@ -222,6 +256,11 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+      <EmergencyCancelDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        onSuccess={handleEmergencySuccess}
+      />
     </DashboardLayout>
   );
 };

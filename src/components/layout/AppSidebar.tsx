@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   MapPin,
+  BarChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -32,24 +33,27 @@ interface NavItem {
 const navItems: NavItem[] = [
   // Referee items
   { label: 'Dashboard', path: '/referee', icon: LayoutDashboard, roles: ['referee'] },
-  { label: 'Availability', path: '/referee/availability', icon: Clock, roles: ['referee'] },
+  { label: 'Sign Up', path: '/referee/availability', icon: Clock, roles: ['referee'] },
   { label: 'My Games', path: '/referee/games', icon: Trophy, roles: ['referee'] },
-  
+
   // Captain items
   { label: 'Dashboard', path: '/captain', icon: LayoutDashboard, roles: ['captain'] },
   { label: 'Season Fixtures', path: '/captain/fixtures', icon: Calendar, roles: ['captain'] },
   { label: 'Friendly Market', path: '/captain/friendlies', icon: Handshake, roles: ['captain'] },
-  { label: 'Submit Scores', path: '/captain/scores', icon: FileText, roles: ['captain'] },
-  
+
+
   // Admin items
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard, roles: ['admin'] },
+  { label: 'Teams', path: '/admin/teams', icon: Users, roles: ['admin'] },
   { label: 'Leagues & Divisions', path: '/admin/leagues', icon: Trophy, roles: ['admin'] },
   { label: 'Pitch Availability', path: '/admin/pitches', icon: MapPin, roles: ['admin'] },
   { label: 'Referees', path: '/admin/referees', icon: Users, roles: ['admin'] },
+  { label: 'Captains', path: '/admin/captains', icon: Shield, roles: ['admin'] },
   { label: 'Manage Games', path: '/admin/games', icon: Calendar, roles: ['admin'] },
+  { label: 'Allocation', path: '/admin/allocation', icon: Users, roles: ['admin'] },
   { label: 'Approvals', path: '/admin/approvals', icon: CheckSquare, roles: ['admin'] },
   { label: 'Emergency Control', path: '/admin/emergency', icon: AlertTriangle, roles: ['admin'] },
-  
+
   // Common items
   { label: 'Notifications', path: '/notifications', icon: Bell, roles: ['admin', 'referee', 'captain'] },
   { label: 'Profile', path: '/profile', icon: Settings, roles: ['admin', 'referee', 'captain'] },

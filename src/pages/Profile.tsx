@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Mail, Shield, Bell, Lock, Save } from 'lucide-react';
+import { User, Lock, Shield, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { Switch } from '@/components/ui/switch';
+// Line 8: import { User, Mail, Shield, Bell, Lock, Save } from 'lucide-react';
+// Line 10: import { Switch } from '@/components/ui/switch';
+// I should remove unused imports. Mail, Bell. Switch is also unused now.
 
 const Profile = () => {
   const { user } = useAuth();
@@ -36,65 +38,9 @@ const Profile = () => {
             <CardDescription>Update your personal details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue={user.name} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" defaultValue={user.email} />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" placeholder="+1 (555) 000-0000" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="student-id">Student ID</Label>
-                <Input id="student-id" placeholder="Enter your student ID" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notification Preferences */}
-        <Card variant="elevated">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-gold" />
-              Notification Preferences
-            </CardTitle>
-            <CardDescription>Choose how you want to be notified</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Email Notifications</p>
-                <p className="text-sm text-muted-foreground">
-                  Receive updates about your games via email
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">SMS Notifications</p>
-                <p className="text-sm text-muted-foreground">
-                  Get text alerts for urgent updates
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Push Notifications</p>
-                <p className="text-sm text-muted-foreground">
-                  Enable browser push notifications
-                </p>
-              </div>
-              <Switch />
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input id="name" defaultValue={user.name} />
             </div>
           </CardContent>
         </Card>
@@ -106,7 +52,7 @@ const Profile = () => {
               <Lock className="h-5 w-5 text-gold" />
               Security
             </CardTitle>
-            <CardDescription>Manage your password and security settings</CardDescription>
+            <CardDescription>Manage your password</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -134,8 +80,8 @@ const Profile = () => {
                   {user.role === 'admin'
                     ? 'Administrator Account'
                     : user.role === 'referee'
-                    ? 'Referee Account'
-                    : 'Team Captain Account'}
+                      ? 'Referee Account'
+                      : 'Team Captain Account'}
                 </p>
                 <p className="text-sm text-sidebar-foreground">
                   Member since January 2024

@@ -1,40 +1,35 @@
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Users, Trophy } from 'lucide-react';
-
-const roles: { role: UserRole; label: string; description: string; icon: React.ComponentType<{ className?: string }>; path: string }[] = [
-  {
-    role: 'admin',
-    label: 'Administrator',
-    description: 'Manage league operations, approve requests, and handle emergencies.',
-    icon: Shield,
-    path: '/admin',
-  },
-  {
-    role: 'referee',
-    label: 'Referee',
-    description: 'View availability, sign up for games, and track your stats.',
-    icon: Users,
-    path: '/referee',
-  },
-  {
-    role: 'captain',
-    label: 'Team Captain',
-    description: 'Manage fixtures, submit scores, and organize friendlies.',
-    icon: Trophy,
-    path: '/captain',
-  },
-];
+import { Trophy, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (role: UserRole, path: string) => {
-    login(role);
-    navigate(path);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await login(username, password);
+      // Navigation is handled by the protected route wrapper or we can redirect based on role here
+      // For now, let's just go to the dashboard which should redirect based on role
+      navigate('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid credentials');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -56,38 +51,62 @@ const Login = () => {
         <p className="mt-2 text-xl font-medium text-gold">
           Football League
         </p>
-        <p className="mt-4 text-muted-foreground">
-          Select a role to explore the dashboard
-        </p>
       </div>
 
-      {/* Role Cards */}
-      <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-3">
-        {roles.map((item, index) => (
-          <Card
-            key={item.role}
-            variant="elevated"
-            className="group cursor-pointer hover:border-gold/50 animate-slide-up"
-            style={{ animationDelay: `${index * 100}ms` }}
-            onClick={() => handleLogin(item.role, item.path)}
-          >
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-navy text-gold transition-transform duration-300 group-hover:scale-110">
-                <item.icon className="h-8 w-8" />
-              </div>
-              <CardTitle className="text-lg">{item.label}</CardTitle>
-              <CardDescription className="text-sm">
-                {item.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Button variant="gold" className="w-full">
-                Demo Login
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Login Form */}
+      <Card className="w-full max-w-md animate-slide-up">
+        <CardHeader className="text-center">
+          <CardTitle>Welcome Back</CardTitle>
+          <CardDescription>Sign in to access your dashboard</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="bg-background/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-background/50"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-navy hover:bg-navy/90 text-white"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
+            </Button>
+
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              <p>Demo Credentials:</p>
+              <p>Admin: admin / password</p>
+              <p>Ref: ref1 / password</p>
+              <p>Captain: captain1 / password</p>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Footer */}
       <p className="mt-12 text-sm text-muted-foreground">

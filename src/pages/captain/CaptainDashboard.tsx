@@ -1,21 +1,96 @@
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockCaptainGames, mockTeamStats, mockFriendlyPosts, Game } from '@/data/mockData';
-import { Trophy, Target, Calendar, Clock, Handshake, ArrowRight, CheckCircle } from 'lucide-react';
-import { format, differenceInHours } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { Trophy, Target, Calendar, Clock, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { format, differenceInHours, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
-const CaptainDashboard = () => {
-  const upcomingGames = mockCaptainGames.filter(g => g.status === 'scheduled').slice(0, 3);
-  const recentResults = mockCaptainGames.filter(g => g.status === 'completed').slice(0, 2);
+interface TeamStats {
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  points: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+}
 
-  const getActionButton = (game: Game) => {
-    const hoursUntil = differenceInHours(game.date, new Date());
-    
+interface TeamData {
+  id: number;
+  name: string;
+  division_name?: string;
+  league_name?: string;
+  stats: TeamStats;
+}
+
+interface Fixture {
+  id: number;
+  home_team: string;
+  away_team: string;
+  date: string;
+  time: string;
+  venue: string;
+  status: string;
+  home_score: number | null;
+  away_score: number | null;
+  is_home: boolean;
+  result?: 'win' | 'loss' | 'draw';
+  referee?: string;
+}
+
+const CaptainDashboard = () => {
+  const { user } = useAuth();
+  const [team, setTeam] = useState<TeamData | null>(null);
+  const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
+  const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
+  const [position, setPosition] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch team data
+        const teamRes = await fetch('/api/captain/team', { credentials: 'include' });
+        if (teamRes.ok) {
+          const teamData = await teamRes.json();
+          setTeam(teamData.team);
+        }
+
+        // Fetch fixtures
+        const fixturesRes = await fetch('/api/captain/fixtures', { credentials: 'include' });
+        if (fixturesRes.ok) {
+          const fixturesData = await fixturesRes.json();
+          setUpcomingFixtures(fixturesData.upcoming || []);
+          setPastFixtures(fixturesData.past || []);
+        }
+
+        // Fetch standings to get position
+        const standingsRes = await fetch('/api/captain/standings', { credentials: 'include' });
+        if (standingsRes.ok) {
+          const standingsData = await standingsRes.json();
+          setPosition(standingsData.team_position);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const getActionButton = (fixture: Fixture) => {
+    const fixtureDate = parseISO(fixture.date);
+    const hoursUntil = differenceInHours(fixtureDate, new Date());
+
     if (hoursUntil > 72) {
       return (
         <Button
@@ -28,7 +103,7 @@ const CaptainDashboard = () => {
         </Button>
       );
     }
-    
+
     return (
       <Button
         size="sm"
@@ -40,33 +115,65 @@ const CaptainDashboard = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!team) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Team Dashboard"
+          description="No team assigned"
+        />
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <p className="text-muted-foreground">You haven't been assigned to a team yet.</p>
+            <p className="text-sm text-muted-foreground mt-1">Please contact the admin to be assigned to a team.</p>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  const stats = team.stats;
+  const recentResults = pastFixtures.slice(0, 3);
+  const nextGames = upcomingFixtures.slice(0, 3);
+
   return (
     <DashboardLayout>
       <PageHeader
         title="Team Dashboard"
-        description={`Managing ${mockTeamStats.teamName}`}
+        description={`Managing ${team.name}${team.division_name ? ` • ${team.division_name}` : ''}`}
       />
 
       {/* Team Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
           label="League Position"
-          value={`#${mockTeamStats.position}`}
+          value={position ? `#${position}` : '-'}
           icon={<Trophy className="h-6 w-6" />}
         />
         <StatCard
           label="Points"
-          value={mockTeamStats.points}
+          value={stats.points}
           icon={<Target className="h-6 w-6" />}
         />
         <StatCard
           label="Goal Difference"
-          value={`+${mockTeamStats.goalsFor - mockTeamStats.goalsAgainst}`}
+          value={stats.goal_difference >= 0 ? `+${stats.goal_difference}` : stats.goal_difference}
           icon={<Target className="h-6 w-6" />}
         />
         <StatCard
           label="Form"
-          value={`${mockTeamStats.won}W ${mockTeamStats.drawn}D ${mockTeamStats.lost}L`}
+          value={`${stats.won}W ${stats.drawn}D ${stats.lost}L`}
           icon={<CheckCircle className="h-6 w-6" />}
         />
       </div>
@@ -84,43 +191,50 @@ const CaptainDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {upcomingGames.map(game => (
-              <Card key={game.id} variant="default" className="animate-fade-in">
-                <CardContent className="p-4">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {game.homeTeam === mockTeamStats.teamName ? (
-                            <>
-                              <span className="text-gold">{game.homeTeam}</span>
-                              <span className="text-muted-foreground mx-2">vs</span>
-                              {game.awayTeam}
-                            </>
-                          ) : (
-                            <>
-                              {game.homeTeam}
-                              <span className="text-muted-foreground mx-2">vs</span>
-                              <span className="text-gold">{game.awayTeam}</span>
-                            </>
+            {nextGames.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No upcoming fixtures</p>
+            ) : (
+              nextGames.map(fixture => (
+                <Card key={fixture.id} variant="default" className="animate-fade-in">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {fixture.is_home ? (
+                              <>
+                                <span className="text-gold">{fixture.home_team}</span>
+                                <span className="text-muted-foreground mx-2">vs</span>
+                                {fixture.away_team}
+                              </>
+                            ) : (
+                              <>
+                                {fixture.home_team}
+                                <span className="text-muted-foreground mx-2">vs</span>
+                                <span className="text-gold">{fixture.away_team}</span>
+                              </>
+                            )}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {format(parseISO(fixture.date), 'EEEE, MMMM d')} at {fixture.time}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{fixture.venue || 'TBC'}</p>
+                          {fixture.referee && (
+                            <p className="text-sm text-gold mt-1">Ref: {fixture.referee}</p>
                           )}
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {format(game.date, 'EEEE, MMMM d')} at {game.time}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{game.venue}</p>
+                        </div>
+                        <Badge variant={fixture.is_home ? 'default' : 'secondary'}>
+                          {fixture.is_home ? 'Home' : 'Away'}
+                        </Badge>
                       </div>
-                      <Badge variant={game.homeTeam === mockTeamStats.teamName ? 'default' : 'secondary'}>
-                        {game.homeTeam === mockTeamStats.teamName ? 'Home' : 'Away'}
-                      </Badge>
+                      <div className="flex justify-end">
+                        {getActionButton(fixture)}
+                      </div>
                     </div>
-                    <div className="flex justify-end">
-                      {getActionButton(game)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -134,85 +248,71 @@ const CaptainDashboard = () => {
             <CardDescription>Your team's recent match results</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentResults.map(game => (
-              <Card key={game.id} variant="default" className="animate-fade-in">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {game.homeTeam} {game.homeScore} - {game.awayScore} {game.awayTeam}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {format(game.date, 'MMMM d, yyyy')}
-                      </p>
+            {recentResults.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No completed matches yet</p>
+            ) : (
+              recentResults.map(fixture => (
+                <Card key={fixture.id} variant="default" className="animate-fade-in">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {fixture.home_team} {fixture.home_score} - {fixture.away_score} {fixture.away_team}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {format(parseISO(fixture.date), 'MMMM d, yyyy')}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          fixture.result === 'win'
+                            ? 'default'
+                            : fixture.result === 'draw'
+                              ? 'secondary'
+                              : 'destructive'
+                        }
+                        className={fixture.result === 'win' ? 'bg-success' : ''}
+                      >
+                        {fixture.result === 'win' ? 'Won' : fixture.result === 'draw' ? 'Draw' : 'Lost'}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={
-                        (game.homeTeam === mockTeamStats.teamName && (game.homeScore ?? 0) > (game.awayScore ?? 0)) ||
-                        (game.awayTeam === mockTeamStats.teamName && (game.awayScore ?? 0) > (game.homeScore ?? 0))
-                          ? 'default'
-                          : game.homeScore === game.awayScore
-                          ? 'secondary'
-                          : 'destructive'
-                      }
-                      className={
-                        (game.homeTeam === mockTeamStats.teamName && (game.homeScore ?? 0) > (game.awayScore ?? 0)) ||
-                        (game.awayTeam === mockTeamStats.teamName && (game.awayScore ?? 0) > (game.homeScore ?? 0))
-                          ? 'bg-success'
-                          : ''
-                      }
-                    >
-                      {(game.homeTeam === mockTeamStats.teamName && (game.homeScore ?? 0) > (game.awayScore ?? 0)) ||
-                      (game.awayTeam === mockTeamStats.teamName && (game.awayScore ?? 0) > (game.homeScore ?? 0))
-                        ? 'Won'
-                        : game.homeScore === game.awayScore
-                        ? 'Draw'
-                        : 'Lost'}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </CardContent>
         </Card>
 
-        {/* Friendly Market Preview */}
+        {/* Division Standing Preview */}
         <Card variant="elevated" className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Handshake className="h-5 w-5 text-gold" />
-                Friendly Market
+                <Trophy className="h-5 w-5 text-gold" />
+                Your Position
               </CardTitle>
-              <CardDescription>Teams looking for friendly matches</CardDescription>
+              <CardDescription>
+                {team.division_name ? `${team.division_name} standings` : 'Division standings'}
+              </CardDescription>
             </div>
-            <Button variant="gold" onClick={() => toast.success('Your availability has been posted!')}>
-              Post Availability
+            <Button variant="outline" onClick={() => window.location.href = '/captain/fixtures'}>
+              <ArrowRight className="h-4 w-4 mr-2" />
+              View Full Fixtures
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {mockFriendlyPosts.map(post => (
-                <Card key={post.id} variant="gold" className="animate-fade-in">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-foreground">{post.teamName}</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {format(post.date, 'EEEE, MMMM d')} at {post.time}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{post.venue}</p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Contact: {post.contactName}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline">
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="text-6xl font-bold text-gold mb-2">
+                  {position ? `#${position}` : '-'}
+                </div>
+                <p className="text-muted-foreground">
+                  {stats.played} games played • {stats.points} points
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {stats.won}W {stats.drawn}D {stats.lost}L • GD: {stats.goal_difference >= 0 ? '+' : ''}{stats.goal_difference}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
