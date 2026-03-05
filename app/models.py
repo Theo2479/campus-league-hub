@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     # Relationships
     captain_of = db.relationship('Team', backref='captain', uselist=False)
     reffed_games = db.relationship('Fixture', backref='referee', lazy='dynamic')
+    notifications = db.relationship('Notification', backref='user', lazy='dynamic', cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -58,7 +59,7 @@ class Division(db.Model):
             'tier': self.tier
         }
 
-class player(db.Model):
+class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
@@ -90,7 +91,7 @@ class Team(db.Model):
     goals_against = db.Column(db.Integer, default=0)
     pitch_quality_score = db.Column(db.Float, default=0.0) # For balancing
     
-    players = db.relationship('player', backref='team', lazy='dynamic')
+    players = db.relationship('Player', backref='team', lazy='dynamic')
 
     @property
     def goal_difference(self):
@@ -127,6 +128,7 @@ class Fixture(db.Model):
     
     status = db.Column(db.String(20), default='scheduled') # scheduled, completed, cancelled, postponed
     is_friendly = db.Column(db.Boolean, default=False)
+    ref_dropped = db.Column(db.Boolean, default=False)  # True if a ref dropped out (shows as open game)
     
     home_score = db.Column(db.Integer, nullable=True)
     away_score = db.Column(db.Integer, nullable=True)
@@ -277,30 +279,58 @@ class ChatChannel(db.Model):
 
 class ChatParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    channel_id = db.Column(db.Integer, db.ForeignKey('chat_channel.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True)
+    channel_id = db.Column(db.Integer, db.ForeignKey('chat_channel.id', ondelete='CASCADE'), nullable=False)
     last_read_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref=db.backref('chat_participations', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('chat_participations', lazy='dynamic', cascade="all, delete-orphan", passive_deletes=True))
 
     __table_args__ = (db.UniqueConstraint('user_id', 'channel_id', name='unique_chat_participant'),)
 
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    channel_id = db.Column(db.Integer, db.ForeignKey('chat_channel.id'), nullable=False)
-    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    channel_id = db.Column(db.Integer, db.ForeignKey('chat_channel.id', ondelete='CASCADE'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
-    sender = db.relationship('User', backref='messages_sent')
+    sender = db.relationship('User', backref=db.backref('messages_sent', lazy='dynamic', passive_deletes=True))
     
     def to_dict(self):
         return {
             'id': self.id,
             'channel_id': self.channel_id,
             'sender_id': self.sender_id,
-            'sender_name': self.sender.name,
+            'sender_name': self.sender.name if self.sender else '[Deleted User]',
             'content': self.content,
             'timestamp': self.timestamp.isoformat()
         }
 
+
+class FriendlyPost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    captain_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    preferred_date = db.Column(db.Date, nullable=False)
+    preferred_time = db.Column(db.String(20), nullable=False)
+    venue_preference = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='open')  # open, matched, expired
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    team = db.relationship('Team', backref='friendly_posts')
+    captain = db.relationship('User', backref='friendly_posts')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'team_id': self.team_id,
+            'team_name': self.team.name if self.team else None,
+            'captain_name': self.captain.name if self.captain else None,
+            'preferred_date': self.preferred_date.isoformat(),
+            'preferred_time': self.preferred_time,
+            'venue_preference': self.venue_preference,
+            'notes': self.notes,
+            'status': self.status,
+            'created_at': self.created_at.isoformat()
+        }

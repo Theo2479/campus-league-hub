@@ -43,6 +43,7 @@ export function ScoreSubmissionDialog({
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     home_score: parseInt(homeScore),
                     away_score: parseInt(awayScore),

@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ScoreSubmissionDialog } from '@/components/referee/ScoreSubmissionDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 // Define types matching the API response
 interface Game {
@@ -27,6 +28,10 @@ const RefereeGames = () => {
   const [loading, setLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
+
+  // Dropout confirmation state
+  const [dropoutGameId, setDropoutGameId] = useState<number | null>(null);
+  const [showDropoutConfirm, setShowDropoutConfirm] = useState(false);
 
   const fetchGames = async () => {
     try {
@@ -49,11 +54,16 @@ const RefereeGames = () => {
     fetchGames();
   }, []);
 
-  const handleDropOut = async (gameId: number) => {
-    if (!confirm("Are you sure you want to drop out? This will notify the league admin.")) return;
+  const handleDropOut = (gameId: number) => {
+    setDropoutGameId(gameId);
+    setShowDropoutConfirm(true);
+  };
+
+  const confirmDropOut = async () => {
+    if (!dropoutGameId) return;
 
     try {
-      const res = await fetch(`/api/referee/games/${gameId}/dropout`, {
+      const res = await fetch(`/api/referee/games/${dropoutGameId}/dropout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -67,6 +77,9 @@ const RefereeGames = () => {
       }
     } catch (e) {
       toast.error('Error processing request');
+    } finally {
+      setShowDropoutConfirm(false);
+      setDropoutGameId(null);
     }
   };
 
@@ -214,6 +227,26 @@ const RefereeGames = () => {
           onSuccess={fetchGames}
         />
       )}
+
+      {/* Dropout Confirmation Dialog */}
+      <Dialog open={showDropoutConfirm} onOpenChange={setShowDropoutConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Drop Out</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to drop out of this game? This will notify the league admin and make the game available for other referees.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDropoutConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDropOut}>
+              Drop Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

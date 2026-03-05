@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
+import ChatPage from "./pages/ChatPage";
 
 // Referee Pages
 import RefereeDashboard from "./pages/referee/RefereeDashboard";
@@ -225,6 +226,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <ChatPage />
           </ProtectedRoute>
         }
       />

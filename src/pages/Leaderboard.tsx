@@ -38,8 +38,8 @@ const Leaderboard = () => {
         const fetchData = async () => {
             try {
                 const [lbRes, scorerRes] = await Promise.all([
-                    fetch("/api/leaderboard"),
-                    fetch("/api/top-scorers")
+                    fetch("/api/leaderboard", { credentials: 'include' }),
+                    fetch("/api/top-scorers", { credentials: 'include' })
                 ]);
 
                 if (lbRes.ok) {

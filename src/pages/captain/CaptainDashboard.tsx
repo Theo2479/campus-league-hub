@@ -9,6 +9,7 @@ import { Trophy, Target, Calendar, Clock, ArrowRight, CheckCircle, Loader2 } fro
 import { format, differenceInHours, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface TeamStats {
   played: number;
@@ -51,6 +52,10 @@ const CaptainDashboard = () => {
   const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
   const [position, setPosition] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Forfeit confirmation state
+  const [forfeitFixtureId, setForfeitFixtureId] = useState<number | null>(null);
+  const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,7 +101,7 @@ const CaptainDashboard = () => {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => toast.info('Postponement request submitted for review')}
+          onClick={() => handlePostpone(fixture.id)}
         >
           <Clock className="h-4 w-4 mr-1" />
           Request Postponement
@@ -108,11 +113,50 @@ const CaptainDashboard = () => {
       <Button
         size="sm"
         variant="destructive"
-        onClick={() => toast.warning('Forfeit submitted. You will receive a 0-3 loss.')}
+        onClick={() => handleForfeit(fixture.id)}
       >
         Forfeit Match
       </Button>
     );
+  };
+
+  const handlePostpone = async (fixtureId: number) => {
+    try {
+      const res = await fetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        toast.success('Postponement request submitted for review');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to submit request');
+      }
+    } catch (e) {
+      toast.error('Error submitting request');
+    }
+  };
+
+  const handleForfeit = (fixtureId: number) => {
+    setForfeitFixtureId(fixtureId);
+    setShowForfeitConfirm(true);
+  };
+
+  const confirmForfeit = async () => {
+    if (!forfeitFixtureId) return;
+
+    try {
+      const res = await fetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        toast.success('Match forfeited. -3 point penalty applied.');
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to forfeit');
+      }
+    } catch (e) {
+      toast.error('Error processing forfeit');
+    } finally {
+      setShowForfeitConfirm(false);
+      setForfeitFixtureId(null);
+    }
   };
 
   if (loading) {
@@ -317,6 +361,26 @@ const CaptainDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Forfeit Confirmation Dialog */}
+      <Dialog open={showForfeitConfirm} onOpenChange={setShowForfeitConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Forfeit</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to forfeit this match? This will result in a 3-0 loss and a -3 point penalty for your team.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForfeitConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmForfeit}>
+              Forfeit Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

@@ -34,7 +34,7 @@ def login():
     if not data:
         return jsonify({'error': 'Invalid request'}), 400
         
-    username = data.get('username')
+    username = (data.get('username') or '').strip()
     password = data.get('password')
     
     user = User.query.filter_by(username=username).first()

@@ -9,6 +9,7 @@ import { format, differenceInHours, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface Fixture {
   id: number;
@@ -31,6 +32,10 @@ const CaptainFixtures = () => {
   const [completedGames, setCompletedGames] = useState<Fixture[]>([]);
   const [teamName, setTeamName] = useState<string>('');
   const [loading, setLoading] = useState(true);
+
+  // Forfeit confirmation state
+  const [forfeitFixtureId, setForfeitFixtureId] = useState<number | null>(null);
+  const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
 
   useEffect(() => {
     const fetchFixtures = async () => {
@@ -57,20 +62,29 @@ const CaptainFixtures = () => {
     fetchFixtures();
   }, [user]);
 
-  const handleForfeit = async (fixtureId: number) => {
-    if (!confirm("Are you sure you want to forfeit? This will record a 3-0 loss.")) return;
+  const handleForfeit = (fixtureId: number) => {
+    setForfeitFixtureId(fixtureId);
+    setShowForfeitConfirm(true);
+  };
+
+  const confirmForfeit = async () => {
+    if (!forfeitFixtureId) return;
 
     try {
-      const res = await fetch(`/api/captain/fixtures/${fixtureId}/forfeit`, { method: 'POST', credentials: 'include' });
+      const res = await fetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST', credentials: 'include' });
       if (res.ok) {
-        toast.success('Match forfeited');
+        toast.success('Match forfeited. -3 point penalty applied.');
         // Refresh
         window.location.reload();
       } else {
-        toast.error('Failed to forfeit');
+        const data = await res.json();
+        toast.error(data.error || 'Failed to forfeit');
       }
     } catch (e) {
       toast.error('Error processing forfeit');
+    } finally {
+      setShowForfeitConfirm(false);
+      setForfeitFixtureId(null);
     }
   };
 
@@ -216,20 +230,64 @@ const CaptainFixtures = () => {
           <TabsTrigger value="completed">Completed ({completedGames.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upcoming" className="space-y-4">
-          {upcomingGames.map(fixture => (
-            <GameCard key={fixture.id} fixture={fixture} showActions />
-          ))}
-          {upcomingGames.length === 0 && (
-            <Card variant="elevated">
-              <CardContent className="p-12 text-center">
-                <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-medium text-foreground">No upcoming fixtures</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Check back later for new scheduled matches
-                </p>
-              </CardContent>
-            </Card>
+        <TabsContent value="upcoming" className="space-y-6">
+          {/* Scheduled Fixtures */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Scheduled</h3>
+            {upcomingGames.filter(f => f.status === 'scheduled').map(fixture => (
+              <GameCard key={fixture.id} fixture={fixture} showActions />
+            ))}
+            {upcomingGames.filter(f => f.status === 'scheduled').length === 0 && (
+              <Card variant="elevated">
+                <CardContent className="p-8 text-center">
+                  <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No scheduled fixtures</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Postponed Fixtures */}
+          {upcomingGames.filter(f => f.status === 'postponed').length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gold">Postponed (Awaiting Reschedule)</h3>
+              {upcomingGames.filter(f => f.status === 'postponed').map(fixture => (
+                <Card key={fixture.id} variant="elevated" className="border-gold/30 bg-gold/5">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gold/20 text-gold">
+                          <Clock className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {fixture.is_home ? (
+                              <>
+                                <span className="text-gold">{fixture.home_team}</span>
+                                <span className="text-muted-foreground mx-2">vs</span>
+                                {fixture.away_team}
+                              </>
+                            ) : (
+                              <>
+                                {fixture.home_team}
+                                <span className="text-muted-foreground mx-2">vs</span>
+                                <span className="text-gold">{fixture.away_team}</span>
+                              </>
+                            )}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Awaiting new date from admin
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="bg-gold/20 text-gold border-gold/30">
+                        {fixture.is_home ? 'Home' : 'Away'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 
@@ -250,6 +308,26 @@ const CaptainFixtures = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Forfeit Confirmation Dialog */}
+      <Dialog open={showForfeitConfirm} onOpenChange={setShowForfeitConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Forfeit</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to forfeit this match? This will result in a 3-0 loss and a -3 point penalty for your team.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForfeitConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmForfeit}>
+              Forfeit Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

@@ -19,6 +19,7 @@ import {
   X,
   MapPin,
   BarChart,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -55,6 +56,7 @@ const navItems: NavItem[] = [
   { label: 'Emergency Control', path: '/admin/emergency', icon: AlertTriangle, roles: ['admin'] },
 
   // Common items
+  { label: 'Chat', path: '/chat', icon: MessageSquare, roles: ['admin', 'referee', 'captain'] },
   { label: 'Notifications', path: '/notifications', icon: Bell, roles: ['admin', 'referee', 'captain'] },
   { label: 'Profile', path: '/profile', icon: Settings, roles: ['admin', 'referee', 'captain'] },
 ];

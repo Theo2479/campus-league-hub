@@ -3,10 +3,20 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Info, CheckCircle, Bell, Check } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, Bell, Check, Trash2 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Notification {
   id: number;
@@ -32,6 +42,7 @@ const typeStyles = {
 const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const fetchNotifications = async () => {
     try {
@@ -50,18 +61,17 @@ const Notifications = () => {
 
   useEffect(() => {
     fetchNotifications();
-    // Poll for notifications every 30s
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = async (id: number) => {
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'POST', credentials: 'include' });
       setNotifications(prev =>
-        prev.map(n => (n.id === parseInt(id) ? { ...n, read: true } : n))
+        prev.map(n => (n.id === id ? { ...n, read: true } : n))
       );
     } catch (error) {
       console.error(error);
@@ -78,18 +88,48 @@ const Notifications = () => {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      const res = await fetch('/api/notifications/clear-all', {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setNotifications([]);
+        toast.success('All notifications cleared');
+      } else {
+        toast.error('Failed to clear notifications');
+      }
+    } catch {
+      toast.error('Failed to clear notifications');
+    } finally {
+      setShowClearDialog(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <PageHeader
         title="Notifications"
         description={`You have ${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`}
         actions={
-          unreadCount > 0 && (
-            <Button variant="outline" onClick={markAllAsRead}>
-              <Check className="h-4 w-4 mr-2" />
-              Mark All as Read
-            </Button>
-          )
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <Button variant="outline" onClick={markAllAsRead}>
+                <Check className="h-4 w-4 mr-2" />
+                Mark All as Read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="destructive"
+                onClick={() => setShowClearDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -154,6 +194,26 @@ const Notifications = () => {
           </Card>
         )}
       </div>
+
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {notifications.length} notification{notifications.length !== 1 ? 's' : ''}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

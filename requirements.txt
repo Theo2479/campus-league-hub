@@ -3,5 +3,9 @@ flask-sqlalchemy
 flask-login
 flask-migrate
 flask-cors
+flask-socketio
+eventlet
+python-dotenv
+gunicorn
 email_validator
 werkzeug

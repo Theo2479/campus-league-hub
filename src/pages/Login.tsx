@@ -99,10 +99,7 @@ const Login = () => {
             </Button>
 
             <div className="mt-4 text-center text-sm text-muted-foreground">
-              <p>Demo Credentials:</p>
-              <p>Admin: admin / password</p>
-              <p>Ref: ref1 / password</p>
-              <p>Captain: captain1 / password</p>
+              <p>Contact your league administrator for login credentials</p>
             </div>
           </form>
         </CardContent>

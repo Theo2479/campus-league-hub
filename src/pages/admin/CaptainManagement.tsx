@@ -117,6 +117,11 @@ const CaptainManagement = () => {
             return;
         }
 
+        if (!newPassword.trim() || newPassword.trim().length < 8) {
+            toast.error('Password must be at least 8 characters');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await fetch('/api/admin/captains', {
@@ -127,7 +132,7 @@ const CaptainManagement = () => {
                     username: newUsername.trim(),
                     name: newName.trim() || newUsername.trim(),
                     phone: newPhone.trim(),
-                    password: newPassword.trim() || 'captain123',
+                    password: newPassword.trim(),
                     team_id: selectedTeamId && selectedTeamId !== 'none' ? parseInt(selectedTeamId) : null
                 })
             });
@@ -306,16 +311,16 @@ const CaptainManagement = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">Password *</Label>
                             <Input
                                 id="password"
                                 type="password"
-                                placeholder="Leave blank for default: captain123"
+                                placeholder="Minimum 8 characters"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                             />
                             <p className="text-xs text-muted-foreground">
-                                Default password is "captain123" if left blank
+                                The captain will use this password to log in
                             </p>
                         </div>
                         <div className="space-y-2">

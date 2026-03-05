@@ -38,8 +38,8 @@ export function MatchScoreModal({ fixture, onScoreSubmitted, trigger }: MatchSco
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add auth token if needed, usually handled by cookie or interceptor
         },
+        credentials: 'include',
         body: JSON.stringify({
           home_score: parseInt(homeScore),
           away_score: parseInt(awayScore),

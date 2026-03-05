@@ -45,7 +45,7 @@ export function RecentChatsWidget() {
                     Recent Chats
                 </CardTitle>
                 <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-xs">
-                    <Link to="/chats">
+                    <Link to="/chat">
                         View All <ArrowRight className="ml-1 h-3 w-3" />
                     </Link>
                 </Button>
@@ -62,7 +62,7 @@ export function RecentChatsWidget() {
                         chats.map(chat => (
                             <Link
                                 key={chat.id}
-                                to={`/chats`} // Ideally pass state to select this chat
+                                to={`/chat`} // Ideally pass state to select this chat
                                 className="block p-3 rounded-lg bg-muted/40 hover:bg-muted transition-colors"
                             >
                                 <div className="flex justify-between items-start mb-1">

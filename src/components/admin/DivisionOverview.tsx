@@ -2,8 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trophy, Calendar, Clock, MapPin, UserCheck, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Trophy, Calendar, Clock, MapPin, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface Standing {
     position: number;
@@ -33,6 +38,14 @@ interface Fixture {
     has_referee?: boolean;
 }
 
+interface PitchSlot {
+    id: number;
+    pitch_name: string;
+    date: string;
+    time_slot: string;
+    is_booked: boolean;
+}
+
 interface DivisionOverviewProps {
     divisionId: string;
     divisionName: string;
@@ -44,6 +57,13 @@ const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) =
     const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
     const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+    // Reschedule dialog state
+    const [showReschedule, setShowReschedule] = useState(false);
+    const [rescheduleFixture, setRescheduleFixture] = useState<Fixture | null>(null);
+    const [pitchSlots, setPitchSlots] = useState<PitchSlot[]>([]);
+    const [selectedSlot, setSelectedSlot] = useState<string>('');
+    const [rescheduleLoading, setRescheduleLoading] = useState(false);
 
     const fetchOverview = useCallback(async () => {
         try {
@@ -75,6 +95,79 @@ const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) =
         const interval = setInterval(fetchOverview, 30000);
         return () => clearInterval(interval);
     }, [fetchOverview]);
+
+    const openRescheduleDialog = async (fixture: Fixture) => {
+        setRescheduleFixture(fixture);
+        setSelectedSlot('');
+        setShowReschedule(true);
+
+        // Fetch available pitch slots
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const endDate = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 60 days ahead
+            const res = await fetch(`/api/admin/pitches/availability-summary?start_date=${today}&end_date=${endDate}`, {
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                // Flatten the nested structure and add pitch_name
+                const allSlots: PitchSlot[] = [];
+                for (const pitch of data.pitches || []) {
+                    for (const slot of pitch.slots || []) {
+                        if (!slot.is_booked) {
+                            allSlots.push({
+                                id: slot.id,
+                                pitch_name: pitch.name,
+                                date: slot.date,
+                                time_slot: slot.time_slot,
+                                is_booked: slot.is_booked
+                            });
+                        }
+                    }
+                }
+                setPitchSlots(allSlots);
+            }
+        } catch (e) {
+            console.error('Failed to fetch pitch availability', e);
+        }
+    };
+
+    const handleReschedule = async () => {
+        if (!rescheduleFixture || !selectedSlot) {
+            toast.error('Please select a date/time/pitch');
+            return;
+        }
+
+        const slot = pitchSlots.find(s => `${s.id}` === selectedSlot);
+        if (!slot) return;
+
+        setRescheduleLoading(true);
+        try {
+            const res = await fetch(`/api/admin/fixtures/${rescheduleFixture.id}/reschedule`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    date: slot.date,
+                    time_slot: slot.time_slot,
+                    pitch: slot.pitch_name
+                })
+            });
+
+            if (res.ok) {
+                toast.success('Fixture rescheduled! Teams have been notified.');
+                setShowReschedule(false);
+                fetchOverview();
+            } else {
+                const data = await res.json();
+                toast.error(data.error || 'Failed to reschedule');
+            }
+        } catch (e) {
+            toast.error('Error rescheduling fixture');
+        } finally {
+            setRescheduleLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -275,6 +368,89 @@ const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) =
                     )}
                 </CardContent>
             </Card>
+
+            {/* Postponed Fixtures - Admin Can Reschedule */}
+            {upcomingFixtures.filter(f => f.status === 'postponed').length > 0 && (
+                <Card className="border-gold/30">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                            <RefreshCw className="h-5 w-5 text-gold" />
+                            <CardTitle className="text-gold">Postponed - Needs Rescheduling</CardTitle>
+                        </div>
+                        <CardDescription>Click to reschedule these matches</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {upcomingFixtures.filter(f => f.status === 'postponed').map((fixture) => (
+                                <div
+                                    key={fixture.id}
+                                    className="flex items-center justify-between p-4 rounded-lg bg-gold/10 border border-gold/30 cursor-pointer hover:bg-gold/20 transition-colors"
+                                    onClick={() => openRescheduleDialog(fixture)}
+                                >
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-base text-foreground">
+                                            {fixture.home_team} vs {fixture.away_team}
+                                        </div>
+                                        <p className="text-sm text-gold mt-1">
+                                            Click to reschedule this match
+                                        </p>
+                                    </div>
+                                    <Button size="sm" variant="outline" className="border-gold text-gold hover:bg-gold/20">
+                                        <RefreshCw className="h-4 w-4 mr-1" />
+                                        Reschedule
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Reschedule Dialog */}
+            <Dialog open={showReschedule} onOpenChange={setShowReschedule}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Reschedule Match</DialogTitle>
+                        <DialogDescription>
+                            {rescheduleFixture && `${rescheduleFixture.home_team} vs ${rescheduleFixture.away_team}`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Select New Date, Time & Pitch</Label>
+                            {pitchSlots.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No available slots. Please add pitch availability first.</p>
+                            ) : (
+                                <Select value={selectedSlot} onValueChange={setSelectedSlot}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Choose an available slot" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        {pitchSlots.map((slot) => (
+                                            <SelectItem key={slot.id} value={`${slot.id}`}>
+                                                {format(parseISO(slot.date), 'EEE, MMM d')} - {slot.time_slot} @ {slot.pitch_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowReschedule(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleReschedule}
+                            disabled={!selectedSlot || rescheduleLoading}
+                            className="bg-gold text-black hover:bg-gold/80"
+                        >
+                            {rescheduleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                            Confirm Reschedule
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

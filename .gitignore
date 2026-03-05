@@ -22,3 +22,23 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Environment & secrets
+.env
+
+# Database
+instance/
+*.db
+
+# Backend logs
+backend.log
+frontend.log
+cookies.txt

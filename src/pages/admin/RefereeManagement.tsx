@@ -86,6 +86,11 @@ const RefereeManagement = () => {
       return;
     }
 
+    if (!newPassword.trim() || newPassword.trim().length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/admin/referees', {
@@ -96,7 +101,7 @@ const RefereeManagement = () => {
           username: newUsername.trim(),
           name: newName.trim() || newUsername.trim(),
           phone: newPhone.trim(),
-          password: newPassword.trim() || 'referee123'
+          password: newPassword.trim()
         })
       });
 
@@ -277,16 +282,16 @@ const RefereeManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password *</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Leave blank for default: referee123"
+                placeholder="Minimum 8 characters"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Default password is "referee123" if left blank
+                The referee will use this password to log in
               </p>
             </div>
           </div>

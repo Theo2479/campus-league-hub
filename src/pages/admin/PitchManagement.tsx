@@ -81,7 +81,7 @@ const PitchManagement = () => {
       endDate.setDate(endDate.getDate() + 56); // 8 weeks
       const endStr = formatDate(endDate);
 
-      const res = await fetch(`/api/admin/pitches/availability-summary?start_date=${startStr}&end_date=${endStr}`);
+      const res = await fetch(`/api/admin/pitches/availability-summary?start_date=${startStr}&end_date=${endStr}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setPitches(data.pitches);

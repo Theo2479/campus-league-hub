@@ -123,7 +123,7 @@ const LeagueManagement = () => {
 
   const fetchTeams = async () => {
     try {
-      const res = await fetch('/api/admin/teams');
+      const res = await fetch('/api/admin/teams', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const teams = data.teams.map((t: any) => ({
@@ -140,7 +140,7 @@ const LeagueManagement = () => {
 
   const fetchLeagues = async () => {
     try {
-      const res = await fetch('/api/admin/leagues');
+      const res = await fetch('/api/admin/leagues', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const mapped = data.leagues.map((l: any) => ({
