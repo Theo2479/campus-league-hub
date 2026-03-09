@@ -107,7 +107,7 @@ const Login = () => {
 
       {/* Footer */}
       <p className="mt-12 text-sm text-muted-foreground">
-        © 2024 University Intramural Sports. All rights reserved.
+        Theo Jouas-Yosano beta tester.
       </p>
     </div>
   );
