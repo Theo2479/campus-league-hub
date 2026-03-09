@@ -137,6 +137,7 @@ class RoundRobinScheduler:
                     fixture = Fixture(
                         home_team_id=team1.id,
                         away_team_id=team2.id,
+                        division_id=self.division.id,
                         date=current_date,
                         time_slot=time,
                         pitch=venue,
@@ -263,6 +264,7 @@ class LeagueRoundRobinScheduler:
                 fixture = Fixture(
                     home_team_id=match['home'].id,
                     away_team_id=match['away'].id,
+                    division_id=match['division'].id,
                     date=current_date,
                     time_slot=time,
                     pitch=venue,

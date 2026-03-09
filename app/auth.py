@@ -23,8 +23,8 @@ def _enrich_user_data(user):
         if team:
             user_data['team_id'] = team.id
             user_data['team_name'] = team.name
-            if team.division:
-                user_data['division_name'] = team.division.name
+            if team.divisions:
+                user_data['division_name'] = team.divisions[0].division.name
                 
     return user_data
 

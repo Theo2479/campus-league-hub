@@ -137,7 +137,7 @@ def allocate_referees(start_date, end_date):
             
             allocations.append({
                 'fixture_id': fixture.id,
-                'fixture': f"{fixture.home_team.name} vs {fixture.away_team.name}",
+                'fixture': f"{fixture.home_team.name if fixture.home_team else 'TBD'} vs {fixture.away_team.name if fixture.away_team else 'TBD'}",
                 'date': fixture.date.isoformat(),
                 'time': fixture.time_slot,
                 'referee': best_match.name,

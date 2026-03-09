@@ -19,7 +19,8 @@ import {
   X,
   MapPin,
   BarChart,
-  MessageSquare
+  MessageSquare,
+  Swords
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -51,6 +52,7 @@ const navItems: NavItem[] = [
   { label: 'Referees', path: '/admin/referees', icon: Users, roles: ['admin'] },
   { label: 'Captains', path: '/admin/captains', icon: Shield, roles: ['admin'] },
   { label: 'Manage Games', path: '/admin/games', icon: Calendar, roles: ['admin'] },
+  { label: 'Knockout Tournaments', path: '/admin/knockout', icon: Swords, roles: ['admin'] },
   { label: 'Allocation', path: '/admin/allocation', icon: Users, roles: ['admin'] },
   { label: 'Approvals', path: '/admin/approvals', icon: CheckSquare, roles: ['admin'] },
   { label: 'Emergency Control', path: '/admin/emergency', icon: AlertTriangle, roles: ['admin'] },

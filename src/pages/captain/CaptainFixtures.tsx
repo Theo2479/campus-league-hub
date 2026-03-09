@@ -37,6 +37,19 @@ const CaptainFixtures = () => {
   // Forfeit confirmation state
   const [forfeitFixtureId, setForfeitFixtureId] = useState<number | null>(null);
   const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  const refetchFixtures = async () => {
+    try {
+      const response = await apiFetch('/api/captain/fixtures');
+      if (response.ok) {
+        const data = await response.json();
+        setUpcomingGames(data.upcoming || []);
+        setCompletedGames(data.past || []);
+        setTeamName(data.team_name || user?.team_name || '');
+      }
+    } catch (e) { /* silent */ }
+  };
 
   useEffect(() => {
     const fetchFixtures = async () => {
@@ -68,36 +81,40 @@ const CaptainFixtures = () => {
 
   const confirmForfeit = async () => {
     if (!forfeitFixtureId) return;
-
+    setActionLoading(forfeitFixtureId);
     try {
       const res = await apiFetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST' });
+      const data = await res.json();
       if (res.ok) {
-        toast.success('Match forfeited. -3 point penalty applied.');
-        // Refresh
-        window.location.reload();
+        toast.success(data.message || 'Match forfeited. -3 point penalty applied.');
+        await refetchFixtures();
       } else {
-        const data = await res.json();
         toast.error(data.error || 'Failed to forfeit');
       }
     } catch (e) {
-      toast.error('Error processing forfeit');
+      toast.error('Network error — could not process forfeit');
     } finally {
+      setActionLoading(null);
       setShowForfeitConfirm(false);
       setForfeitFixtureId(null);
     }
   };
 
   const handlePostpone = async (fixtureId: number) => {
+    setActionLoading(fixtureId);
     try {
       const res = await apiFetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST' });
+      const data = await res.json();
       if (res.ok) {
-        toast.success('Postponement request submitted for review');
+        toast.success(data.message || 'Postponement request submitted for review');
+        await refetchFixtures();
       } else {
-        const data = await res.json();
         toast.error(data.error || 'Failed to submit request');
       }
     } catch (e) {
-      toast.error('Error submitting request');
+      toast.error('Network error — could not submit request');
+    } finally {
+      setActionLoading(null);
     }
   };
 

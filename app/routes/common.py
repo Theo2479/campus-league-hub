@@ -25,14 +25,44 @@ def health_check():
 
 @common.route('/leaderboard', methods=['GET'])
 def get_leaderboard():
-    """Get league table sorted by points."""
+    """Get league table aggregated across all divisions for a global leaderboard."""
     teams = Team.query.all()
+    
+    leaderboard_data = []
+    for t in teams:
+        # Aggregate stats from all divisions the team is in
+        played = sum(td.played for td in t.divisions)
+        won = sum(td.won for td in t.divisions)
+        drawn = sum(td.drawn for td in t.divisions)
+        lost = sum(td.lost for td in t.divisions)
+        points = sum(td.points for td in t.divisions)
+        goals_for = sum(td.goals_for for td in t.divisions)
+        goals_against = sum(td.goals_against for td in t.divisions)
+        goal_difference = goals_for - goals_against
+        
+        team_data = {
+            'id': t.id,
+            'name': t.name,
+            'stats': {
+                'played': played,
+                'won': won,
+                'drawn': drawn,
+                'lost': lost,
+                'goals_for': goals_for,
+                'goals_against': goals_against,
+                'goal_difference': goal_difference,
+                'points': points
+            }
+        }
+        leaderboard_data.append(team_data)
+        
     sorted_teams = sorted(
-        teams, 
-        key=lambda t: (t.points, t.goal_difference, t.goals_for), 
+        leaderboard_data, 
+        key=lambda d: (d['stats']['points'], d['stats']['goal_difference'], d['stats']['goals_for']), 
         reverse=True
     )
-    return jsonify({'leaderboard': [t.to_dict() for t in sorted_teams]})
+    
+    return jsonify({'leaderboard': sorted_teams})
 
 
 @common.route('/top-scorers', methods=['GET'])

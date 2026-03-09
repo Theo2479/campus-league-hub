@@ -49,7 +49,9 @@ class Division(db.Model):
     day_of_week = db.Column(db.String(20), nullable=False) # "Wednesday"
     tier = db.Column(db.Integer, default=1)
     league_id = db.Column(db.Integer, db.ForeignKey('league.id'), nullable=True)
-    teams = db.relationship('Team', backref='division', lazy='dynamic')
+    
+    # New M2M relationship
+    teams = db.relationship('TeamDivision', back_populates='division', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -57,6 +59,43 @@ class Division(db.Model):
             'name': self.name,
             'day_of_week': self.day_of_week,
             'tier': self.tier
+        }
+
+class TeamDivision(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    division_id = db.Column(db.Integer, db.ForeignKey('division.id'), nullable=False)
+    
+    # Division specific stats
+    played = db.Column(db.Integer, default=0)
+    won = db.Column(db.Integer, default=0)
+    drawn = db.Column(db.Integer, default=0)
+    lost = db.Column(db.Integer, default=0)
+    points = db.Column(db.Integer, default=0)
+    goals_for = db.Column(db.Integer, default=0)
+    goals_against = db.Column(db.Integer, default=0)
+    
+    team = db.relationship('Team', back_populates='divisions')
+    division = db.relationship('Division', back_populates='teams')
+
+    @property
+    def goal_difference(self):
+        return self.goals_for - self.goals_against
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'team_id': self.team_id,
+            'division_id': self.division_id,
+            'team_name': self.team.name if self.team else 'Unknown',
+            'played': self.played,
+            'won': self.won,
+            'drawn': self.drawn,
+            'lost': self.lost,
+            'points': self.points,
+            'goals_for': self.goals_for,
+            'goals_against': self.goals_against,
+            'goal_difference': self.goal_difference
         }
 
 class Player(db.Model):
@@ -79,9 +118,9 @@ class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     captain_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    division_id = db.Column(db.Integer, db.ForeignKey('division.id'))
     
-    # Stats (JSON or simple columns)
+    # Legacy fields (kept to avoid SQLite migration issues)
+    division_id = db.Column(db.Integer, db.ForeignKey('division.id'))
     played = db.Column(db.Integer, default=0)
     won = db.Column(db.Integer, default=0)
     drawn = db.Column(db.Integer, default=0)
@@ -89,38 +128,56 @@ class Team(db.Model):
     points = db.Column(db.Integer, default=0)
     goals_for = db.Column(db.Integer, default=0)
     goals_against = db.Column(db.Integer, default=0)
+    
     pitch_quality_score = db.Column(db.Float, default=0.0) # For balancing
     
     players = db.relationship('Player', backref='team', lazy='dynamic')
-
-    @property
-    def goal_difference(self):
-        return self.goals_for - self.goals_against
+    
+    # New M2M relationship
+    divisions = db.relationship('TeamDivision', back_populates='team', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'captain_id': self.captain_id,
-            'division_id': self.division_id,
             'players': [p.to_dict() for p in self.players],
-            'stats': {
-                'played': self.played,
-                'won': self.won,
-                'drawn': self.drawn,
-                'lost': self.lost,
-                'points': self.points,
-                'goals_for': self.goals_for,
-                'goals_against': self.goals_against,
-                'goal_difference': self.goal_difference
-            }
+            'divisions': [d.division_id for d in self.divisions]
         }
+
+class Tournament(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    format = db.Column(db.String(20), default='knockout')  # knockout
+    status = db.Column(db.String(20), default='setup')      # setup, in_progress, completed
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    fixtures = db.relationship('Fixture', backref='tournament', lazy='dynamic')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'format': self.format,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+# Many-to-many association for tournament teams
+tournament_teams = db.Table('tournament_teams',
+    db.Column('tournament_id', db.Integer, db.ForeignKey('tournament.id'), primary_key=True),
+    db.Column('team_id', db.Integer, db.ForeignKey('team.id'), primary_key=True)
+)
 
 class Fixture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     home_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
     away_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
     ref_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=True)
+    division_id = db.Column(db.Integer, db.ForeignKey('division.id'), nullable=True)
+    round_name = db.Column(db.String(50), nullable=True)  # 'Quarter-Final', 'Semi-Final', 'Final'
+    match_order = db.Column(db.Integer, nullable=True)     # ordering within a round
     
     date = db.Column(db.DateTime, nullable=False)
     time_slot = db.Column(db.String(20)) # e.g., "15:00"
@@ -142,13 +199,20 @@ class Fixture(db.Model):
             'id': self.id,
             'home_team': self.home_team.name if self.home_team else 'Unknown',
             'away_team': self.away_team.name if self.away_team else 'Unknown',
+            'home_team_id': self.home_team_id,
+            'away_team_id': self.away_team_id,
             'date': self.date.isoformat() if self.date else None,
             'time': self.time_slot,
             'venue': self.pitch,
             'status': self.status,
             'home_score': self.home_score,
             'away_score': self.away_score,
-            'referee': self.referee.name if self.referee else None
+            'referee': self.referee.name if self.referee else None,
+            'ref_id': self.ref_id,
+            'tournament_id': self.tournament_id,
+            'round_name': self.round_name,
+            'match_order': self.match_order,
+            'is_bye': self.away_team_id == self.home_team_id if self.home_team_id and self.away_team_id else False
         }
 
 class RefereeAvailability(db.Model):

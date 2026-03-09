@@ -86,7 +86,7 @@ const LeagueManagement = () => {
 
   // Form states
   const [newLeagueName, setNewLeagueName] = useState('');
-  const [newLeagueDay, setNewLeagueDay] = useState<'Wednesday' | 'Saturday' | 'Sunday'>('Wednesday');
+  const [newLeagueDay, setNewLeagueDay] = useState('Monday');
 
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const [newDivisionName, setNewDivisionName] = useState('');
@@ -180,7 +180,7 @@ const LeagueManagement = () => {
           name: newLeagueName,
           day: newLeagueDay
         })
-        
+
       });
 
       if (res.ok) {
@@ -219,8 +219,10 @@ const LeagueManagement = () => {
       if (res.ok) {
         toast.success(`${deleteType === 'league' ? 'League' : 'Division'} deleted`);
         fetchLeagues();
+        fetchTeams();
       } else {
-        toast.error(`Failed to delete ${deleteType}`);
+        const data = await res.json();
+        toast.error(data.error || `Failed to delete ${deleteType}`);
       }
     } catch (e) {
       toast.error(`Error deleting ${deleteType}`);
@@ -248,7 +250,7 @@ const LeagueManagement = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newDivisionName })
-        
+
       });
 
       if (res.ok) {
@@ -285,7 +287,7 @@ const LeagueManagement = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamIdentifiers: selectedTeamIds })
-        
+
       });
 
       if (res.ok) {
@@ -305,16 +307,15 @@ const LeagueManagement = () => {
     return availableTeams.find(t => t.id === teamId)?.name || teamId;
   };
 
-  const getAssignedTeamIds = (): string[] => {
-    const assigned: string[] = [];
-    leagues.forEach(league => {
-      league.divisions.forEach(div => {
-        if (div.id !== selectedDivision?.id) {
-          assigned.push(...div.teams);
+  const getTeamDivisionLabel = (teamId: string): string | null => {
+    for (const league of leagues) {
+      for (const div of league.divisions) {
+        if (div.id !== selectedDivision?.id && div.teams.includes(teamId)) {
+          return `${league.name} — ${div.name}`;
         }
-      });
-    });
-    return assigned;
+      }
+    }
+    return null;
   };
 
   const openGenerateFixtures = (leagueId: string) => {
@@ -577,12 +578,16 @@ const LeagueManagement = () => {
             </div>
             <div className="space-y-2">
               <Label>Match Day</Label>
-              <Select value={newLeagueDay} onValueChange={(v) => setNewLeagueDay(v as typeof newLeagueDay)}>
+              <Select value={newLeagueDay} onValueChange={setNewLeagueDay}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Monday">Monday</SelectItem>
+                  <SelectItem value="Tuesday">Tuesday</SelectItem>
                   <SelectItem value="Wednesday">Wednesday</SelectItem>
+                  <SelectItem value="Thursday">Thursday</SelectItem>
+                  <SelectItem value="Friday">Friday</SelectItem>
                   <SelectItem value="Saturday">Saturday</SelectItem>
                   <SelectItem value="Sunday">Sunday</SelectItem>
                 </SelectContent>
@@ -622,17 +627,19 @@ const LeagueManagement = () => {
           <div className="max-h-[300px] overflow-y-auto py-4">
             <div className="space-y-2">
               {availableTeams.map(team => {
-                const assignedElsewhere = getAssignedTeamIds().includes(team.id);
+                const otherDivision = getTeamDivisionLabel(team.id);
                 return (
-                  <div key={team.id} className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 ${assignedElsewhere ? 'opacity-50' : ''}`}>
+                  <div key={team.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50">
                     <Checkbox
                       id={team.id}
                       checked={selectedTeamIds.includes(team.id)}
                       onCheckedChange={() => handleTeamToggle(team.id)}
-                      disabled={assignedElsewhere}
                     />
                     <label htmlFor={team.id} className="flex-1 text-sm font-medium cursor-pointer">
-                      {team.name} {assignedElsewhere && <span className="text-xs text-muted-foreground ml-2">(assigned)</span>}
+                      {team.name}
+                      {otherDivision && (
+                        <span className="text-xs text-muted-foreground ml-2">({otherDivision})</span>
+                      )}
                     </label>
                   </div>
                 );

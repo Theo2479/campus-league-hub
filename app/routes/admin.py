@@ -6,7 +6,8 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import (
     Fixture, Team, Division, RefereeAvailability, League, Player,
-    SystemSetting, Notification, User, Pitch, PitchAvailability
+    SystemSetting, Notification, User, Pitch, PitchAvailability,
+    Tournament, tournament_teams
 )
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
@@ -760,7 +761,7 @@ def get_leagues():
         l_dict['divisions'] = []
         for d in l.divisions:
             d_dict = d.to_dict()
-            d_dict['teams'] = [t.id for t in d.teams]
+            d_dict['teams'] = [td.team_id for td in d.teams]
             l_dict['divisions'].append(d_dict)
         result.append(l_dict)
         
@@ -807,7 +808,7 @@ def delete_league(league_id):
         from app.models import ChatChannel
         
         for division in league.divisions:
-            team_ids = [t.id for t in division.teams]
+            team_ids = [td.team_id for td in division.teams]
             if team_ids:
                 fixtures = Fixture.query.filter(
                     (Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))
@@ -831,15 +832,10 @@ def delete_league(league_id):
                     
                     Fixture.query.filter(Fixture.id.in_(fixture_ids)).delete(synchronize_session=False)
 
-            for team in division.teams:
-                team.division_id = None
-                team.played = 0
-                team.won = 0
-                team.drawn = 0
-                team.lost = 0
-                team.points = 0
-                team.goals_for = 0
-                team.goals_against = 0
+            # Delete TeamDivision associations
+            from app.models import TeamDivision
+            TeamDivision.query.filter_by(division_id=division.id).delete(synchronize_session=False)
+            
             db.session.delete(division)
             
         db.session.delete(league)
@@ -891,7 +887,7 @@ def delete_division(division_id):
         return jsonify({'error': 'Division not found'}), 404
         
     try:
-        team_ids = [t.id for t in division.teams]
+        team_ids = [td.team_id for td in division.teams]
         if team_ids:
             fixtures = Fixture.query.filter(
                 (Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))
@@ -908,15 +904,9 @@ def delete_division(division_id):
                 fixture_ids = [f.id for f in fixtures]
                 Fixture.query.filter(Fixture.id.in_(fixture_ids)).delete(synchronize_session=False)
 
-        for team in division.teams:
-            team.division_id = None
-            team.played = 0
-            team.won = 0
-            team.drawn = 0
-            team.lost = 0
-            team.points = 0
-            team.goals_for = 0
-            team.goals_against = 0
+        # Delete TeamDivision associations
+        from app.models import TeamDivision
+        TeamDivision.query.filter_by(division_id=division.id).delete(synchronize_session=False)
             
         db.session.delete(division)
         db.session.commit()
@@ -941,11 +931,24 @@ def update_division_teams(division_id):
     data = request.get_json()
     team_ids = data.get('teamIdentifiers', [])
     
-    for t_id in team_ids:
-        team = Team.query.get(t_id)
-        if team:
-            team.division_id = division_id
+    from app.models import TeamDivision
+    
+    # Remove old assignments not in team_ids
+    existing_tds = TeamDivision.query.filter_by(division_id=division_id).all()
+    existing_team_ids = [td.team_id for td in existing_tds]
+    
+    for td in existing_tds:
+        if td.team_id not in team_ids:
+            db.session.delete(td)
             
+    # Add new assignments
+    for t_id in team_ids:
+        if t_id not in existing_team_ids:
+            team = Team.query.get(t_id)
+            if team:
+                new_td = TeamDivision(team_id=t_id, division_id=division_id)
+                db.session.add(new_td)
+                
     db.session.commit()
     
     return jsonify({'message': 'Teams assigned'})
@@ -962,7 +965,7 @@ def get_division_fixtures(division_id):
     if not division:
         return jsonify({'error': 'Division not found'}), 404
     
-    team_ids = [t.id for t in division.teams]
+    team_ids = [td.team_id for td in division.teams]
     
     if not team_ids:
         return jsonify({'fixtures': []})
@@ -989,28 +992,32 @@ def get_division_overview(division_id):
         return jsonify({'error': 'Division not found'}), 404
     
     teams = list(division.teams)
-    team_ids = [t.id for t in teams]
+    team_ids = [td.team_id for td in teams]
+    # Get TeamDivision records for stats
+    from app.models import TeamDivision
+    team_divisions = TeamDivision.query.filter_by(division_id=division_id).all()
+    team_divisions_by_team = {td.team_id: td for td in team_divisions}
     
     sorted_teams = sorted(
-        teams, 
-        key=lambda t: (t.points, t.goal_difference, t.goals_for), 
+        team_divisions, 
+        key=lambda td: (td.points, td.goal_difference, td.goals_for), 
         reverse=True
     )
     
     standings = []
-    for pos, team in enumerate(sorted_teams, 1):
+    for pos, td in enumerate(sorted_teams, 1):
         standings.append({
             'position': pos,
-            'id': team.id,
-            'name': team.name,
-            'played': team.played,
-            'won': team.won,
-            'drawn': team.drawn,
-            'lost': team.lost,
-            'goals_for': team.goals_for,
-            'goals_against': team.goals_against,
-            'goal_difference': team.goal_difference,
-            'points': team.points
+            'id': td.team.id,
+            'name': td.team.name,
+            'played': td.played,
+            'won': td.won,
+            'drawn': td.drawn,
+            'lost': td.lost,
+            'goals_for': td.goals_for,
+            'goals_against': td.goals_against,
+            'goal_difference': td.goal_difference,
+            'points': td.points
         })
     
     if not team_ids:
@@ -1022,12 +1029,14 @@ def get_division_overview(division_id):
         upcoming = Fixture.query.filter(
             ((Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))),
             Fixture.date >= now,
-            Fixture.status.in_(['scheduled', 'postponed'])
+            Fixture.status.in_(['scheduled', 'postponed']),
+            Fixture.tournament_id == None
         ).order_by(Fixture.date.asc()).all()
         
         past = Fixture.query.filter(
             ((Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))),
-            (Fixture.date < now) | (Fixture.status == 'completed')
+            (Fixture.date < now) | (Fixture.status == 'completed'),
+            Fixture.tournament_id == None
         ).order_by(Fixture.date.desc()).all()
         
         upcoming_fixtures = []
@@ -1423,8 +1432,9 @@ def emergency_cancel_day():
 def manage_availability_window():
     """Get or set the referee availability window."""
     if request.method == 'GET':
-        if current_user.role != 'admin':
+        if current_user.role not in ['admin', 'referee']:
             return jsonify({'error': 'Unauthorized'}), 403
+        
         start = SystemSetting.query.get('ref_window_start')
         end = SystemSetting.query.get('ref_window_end')
         is_open = SystemSetting.query.get('ref_window_open')
@@ -1562,3 +1572,427 @@ def reset_all_data():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Reset failed: {str(e)}'}), 500
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  TOURNAMENT CRUD
+# ──────────────────────────────────────────────────────────────────────────────
+
+@admin.route('/admin/tournaments', methods=['GET'])
+@login_required
+def list_tournaments():
+    """List all tournaments with their teams and fixtures."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    tournaments = Tournament.query.order_by(Tournament.created_at.desc()).all()
+    result = []
+    for t in tournaments:
+        team_ids = db.session.execute(
+            tournament_teams.select().where(tournament_teams.c.tournament_id == t.id)
+        ).fetchall()
+        teams = []
+        for row in team_ids:
+            team = Team.query.get(row.team_id)
+            if team:
+                teams.append({'id': team.id, 'name': team.name})
+
+        fixtures = [f.to_dict() for f in t.fixtures.order_by(Fixture.match_order).all()]
+
+        # Group fixtures by round
+        rounds = {}
+        for f in fixtures:
+            rn = f.get('round_name', 'Unknown')
+            if rn not in rounds:
+                rounds[rn] = []
+            rounds[rn].append(f)
+
+        result.append({
+            **t.to_dict(),
+            'teams': teams,
+            'fixtures': fixtures,
+            'rounds': rounds
+        })
+
+    return jsonify({'tournaments': result})
+
+
+@admin.route('/admin/tournaments', methods=['POST'])
+@login_required
+def create_tournament():
+    """Create a new tournament."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Tournament name is required'}), 400
+
+    tournament = Tournament(name=name, format='knockout', status='setup')
+    db.session.add(tournament)
+    db.session.commit()
+
+    return jsonify({'message': f'Tournament "{name}" created', 'tournament': tournament.to_dict()}), 201
+
+
+@admin.route('/admin/tournaments/<int:tid>/teams', methods=['POST'])
+@login_required
+def assign_tournament_teams(tid):
+    """Assign teams to a tournament."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    tournament = Tournament.query.get_or_404(tid)
+    data = request.get_json()
+    team_ids = data.get('teamIds', [])
+
+    if len(team_ids) < 2:
+        return jsonify({'error': 'At least 2 teams required'}), 400
+
+    # Clear existing
+    db.session.execute(tournament_teams.delete().where(tournament_teams.c.tournament_id == tid))
+
+    for team_id in team_ids:
+        db.session.execute(tournament_teams.insert().values(tournament_id=tid, team_id=int(team_id)))
+
+    db.session.commit()
+    return jsonify({'message': f'{len(team_ids)} teams assigned'})
+
+
+@admin.route('/admin/tournaments/<int:tid>/generate', methods=['POST'])
+@login_required
+def generate_knockout_bracket(tid):
+    """Generate knockout bracket fixtures with bye support."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    tournament = Tournament.query.get_or_404(tid)
+
+    data = request.get_json()
+    start_date_str = data.get('startDate')
+    # Default time slot if no slots are available
+    default_time_slot = data.get('timeSlot', '15:00')
+    bye_team_ids = data.get('byeTeamIds', [])  # Teams that get a first-round bye
+
+    if not start_date_str:
+        return jsonify({'error': 'Start date is required'}), 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    # Get participating teams
+    rows = db.session.execute(
+        tournament_teams.select().where(tournament_teams.c.tournament_id == tid)
+    ).fetchall()
+    all_team_ids = [r.team_id for r in rows]
+
+    if len(all_team_ids) < 2:
+        return jsonify({'error': 'At least 2 teams must be assigned'}), 400
+
+    # Delete existing tournament fixtures
+    Fixture.query.filter_by(tournament_id=tid).delete()
+
+    # Separate bye teams and playing teams
+    bye_ids_set = set(int(b) for b in bye_team_ids)
+    playing = [t_id for t_id in all_team_ids if t_id not in bye_ids_set]
+    byes = [t_id for t_id in all_team_ids if t_id in bye_ids_set]
+
+    # Determine round names based on total teams (playing + byes advancing)
+    total = len(all_team_ids)
+    round_names = []
+    if total <= 2:
+        round_names = ['Final']
+    elif total <= 4:
+        round_names = ['Semi-Final', 'Final']
+    elif total <= 8:
+        round_names = ['Quarter-Final', 'Semi-Final', 'Final']
+    elif total <= 16:
+        round_names = ['Round of 16', 'Quarter-Final', 'Semi-Final', 'Final']
+    else:
+        round_names = ['Round of 32', 'Round of 16', 'Quarter-Final', 'Semi-Final', 'Final']
+
+    # Pitch allocation
+    from app.models import PitchAvailability, Pitch
+    import random
+    from datetime import timedelta
+
+    # Generate Round 1 matches (non-bye teams paired up)
+    fixtures_created = []
+    match_order = 1
+    current_date = start_date
+
+    # Pre-calculate pairs
+    pairs = []
+    for i in range(0, len(playing) - 1, 2):
+        pairs.append((playing[i], playing[i + 1]))
+
+    pair_idx = 0
+    weeks_checked = 0
+
+    while pair_idx < len(pairs):
+        all_slots = PitchAvailability.query.filter_by(date=current_date.date()).all()
+        
+        # Filter out slots taken by existing fixtures
+        existing_fixtures = Fixture.query.filter(
+            Fixture.date == current_date,
+            Fixture.status != 'cancelled'
+        ).all()
+        
+        busy = set()
+        for ef in existing_fixtures:
+            if ef.pitch and ef.time_slot:
+                busy.add((ef.pitch, ef.time_slot))
+                
+        valid_slots = []
+        for slot in all_slots:
+            pitch = Pitch.query.get(slot.pitch_id)
+            if pitch and (pitch.name, slot.time_slot) not in busy:
+                valid_slots.append({'pitch': pitch, 'time': slot.time_slot})
+                
+        # If no valid slots on this date, fallback or move to next week
+        if len(valid_slots) == 0:
+            if weeks_checked > 10:
+                # Force assign remaining as Unassigned
+                for i in range(pair_idx, len(pairs)):
+                    home, away = pairs[i]
+                    fixture = Fixture(
+                        home_team_id=home,
+                        away_team_id=away,
+                        tournament_id=tid,
+                        round_name=round_names[0],
+                        match_order=match_order,
+                        date=current_date,
+                        time_slot=default_time_slot,
+                        pitch="Unassigned (No more slots)",
+                        status='scheduled'
+                    )
+                    db.session.add(fixture)
+                    fixtures_created.append(fixture)
+                    match_order += 1
+                break
+            else:
+                current_date += timedelta(weeks=1)
+                weeks_checked += 1
+                continue
+                
+        random.shuffle(valid_slots)
+        
+        # Assign available slots
+        for slot in valid_slots:
+            if pair_idx >= len(pairs):
+                break
+                
+            home, away = pairs[pair_idx]
+            fixture = Fixture(
+                home_team_id=home,
+                away_team_id=away,
+                tournament_id=tid,
+                round_name=round_names[0],
+                match_order=match_order,
+                date=current_date,
+                time_slot=slot['time'],
+                pitch=slot['pitch'].name,
+                status='scheduled'
+            )
+            db.session.add(fixture)
+            fixtures_created.append(fixture)
+            match_order += 1
+            pair_idx += 1
+            
+        # Move to next week for remaining matches
+        if pair_idx < len(pairs):
+            current_date += timedelta(weeks=1)
+            weeks_checked += 1
+
+    # If odd number of playing teams, last team gets a bye via a "BYE" marker
+    if len(playing) % 2 == 1:
+        byes.append(playing[-1])
+
+    tournament.status = 'in_progress'
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Knockout bracket generated: {len(fixtures_created)} matches in {round_names[0]}',
+        'fixtures': [f.to_dict() for f in fixtures_created],
+        'bye_teams': [Team.query.get(b).name for b in byes if Team.query.get(b)],
+        'rounds': round_names
+    })
+
+
+@admin.route('/admin/tournaments/<int:tid>/advance', methods=['POST'])
+@login_required
+def advance_tournament_round(tid):
+    """Advance completed round winners to the next round."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    tournament = Tournament.query.get_or_404(tid)
+    data = request.get_json()
+    next_round_name = data.get('nextRound')
+    next_date_str = data.get('date')
+    default_time_slot = data.get('timeSlot', '15:00')
+
+    if not next_round_name or not next_date_str:
+        return jsonify({'error': 'Next round name and date required'}), 400
+
+    try:
+        next_date = datetime.strptime(next_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    # Get the current round's completed fixtures
+    current_fixtures = Fixture.query.filter_by(
+        tournament_id=tid, status='completed'
+    ).order_by(Fixture.match_order).all()
+
+    # Get all existing rounds
+    existing_rounds = set()
+    for f in tournament.fixtures.all():
+        if f.round_name:
+            existing_rounds.add(f.round_name)
+
+    # Check if next_round already has fixtures
+    existing_next = Fixture.query.filter_by(tournament_id=tid, round_name=next_round_name).count()
+    if existing_next > 0:
+        return jsonify({'error': f'{next_round_name} fixtures already exist'}), 400
+
+    # Determine winners
+    winners = []
+    for f in current_fixtures:
+        if f.round_name not in existing_rounds:
+            continue
+        if f.home_score is not None and f.away_score is not None:
+            if f.home_score > f.away_score:
+                winners.append(f.home_team_id)
+            elif f.away_score > f.home_score:
+                winners.append(f.away_team_id)
+            # Draw/tie — shouldn't happen in knockout, skip
+
+    # Also add bye teams that were stored
+    bye_team_ids = data.get('byeTeamIds', [])
+    for b in bye_team_ids:
+        winners.append(int(b))
+
+    if len(winners) < 2:
+        return jsonify({'error': 'Not enough winners to create next round'}), 400
+
+    # Pitch allocation
+    from app.models import PitchAvailability, Pitch
+    import random
+    from datetime import timedelta
+    
+    fixtures_created = []
+    match_order = 1
+    current_date = next_date
+
+    pairs = []
+    for i in range(0, len(winners) - 1, 2):
+        pairs.append((winners[i], winners[i + 1]))
+
+    pair_idx = 0
+    weeks_checked = 0
+
+    while pair_idx < len(pairs):
+        all_slots = PitchAvailability.query.filter_by(date=current_date.date()).all()
+        
+        # Filter out slots taken by existing fixtures
+        existing_fixtures = Fixture.query.filter(
+            Fixture.date == current_date,
+            Fixture.status != 'cancelled'
+        ).all()
+        
+        busy = set()
+        for ef in existing_fixtures:
+            if ef.pitch and ef.time_slot:
+                busy.add((ef.pitch, ef.time_slot))
+                
+        valid_slots = []
+        for slot in all_slots:
+            pitch = Pitch.query.get(slot.pitch_id)
+            if pitch and (pitch.name, slot.time_slot) not in busy:
+                valid_slots.append({'pitch': pitch, 'time': slot.time_slot})
+                
+        if len(valid_slots) == 0:
+            if weeks_checked > 10:
+                # Force assign remaining
+                for i in range(pair_idx, len(pairs)):
+                    home, away = pairs[i]
+                    fixture = Fixture(
+                        home_team_id=home,
+                        away_team_id=away,
+                        tournament_id=tid,
+                        round_name=next_round_name,
+                        match_order=match_order,
+                        date=current_date,
+                        time_slot=default_time_slot,
+                        pitch="Unassigned (No more slots)",
+                        status='scheduled'
+                    )
+                    db.session.add(fixture)
+                    fixtures_created.append(fixture)
+                    match_order += 1
+                break
+            else:
+                current_date += timedelta(weeks=1)
+                weeks_checked += 1
+                continue
+                
+        random.shuffle(valid_slots)
+        
+        for slot in valid_slots:
+            if pair_idx >= len(pairs):
+                break
+                
+            home, away = pairs[pair_idx]
+            fixture = Fixture(
+                home_team_id=home,
+                away_team_id=away,
+                tournament_id=tid,
+                round_name=next_round_name,
+                match_order=match_order,
+                date=current_date,
+                time_slot=slot['time'],
+                pitch=slot['pitch'].name,
+                status='scheduled'
+            )
+            db.session.add(fixture)
+            fixtures_created.append(fixture)
+            match_order += 1
+            pair_idx += 1
+            
+        if pair_idx < len(pairs):
+            current_date += timedelta(weeks=1)
+            weeks_checked += 1
+
+    # If this is the Final round with 1 fixture, mark tournament
+    if next_round_name == 'Final' and len(fixtures_created) == 1:
+        pass  # Will mark completed after final is played
+
+    db.session.commit()
+    return jsonify({
+        'message': f'{len(fixtures_created)} matches created for {next_round_name}',
+        'fixtures': [f.to_dict() for f in fixtures_created]
+    })
+
+
+@admin.route('/admin/tournaments/<int:tid>', methods=['DELETE'])
+@login_required
+def delete_tournament(tid):
+    """Delete a tournament and all its fixtures."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    tournament = Tournament.query.get_or_404(tid)
+
+    # Delete fixtures
+    Fixture.query.filter_by(tournament_id=tid).delete()
+    # Delete team assignments
+    db.session.execute(tournament_teams.delete().where(tournament_teams.c.tournament_id == tid))
+    # Delete tournament
+    db.session.delete(tournament)
+    db.session.commit()
+
+    return jsonify({'message': f'Tournament "{tournament.name}" deleted'})

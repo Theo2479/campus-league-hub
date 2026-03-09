@@ -108,9 +108,8 @@ def generate_league_fixtures(league_id):
     div_ids = [d.id for d in league.divisions]
     cleanup_count = 0
     if div_ids:
-        fixtures_to_delete = Fixture.query.join(Team, Fixture.home_team_id == Team.id)\
-            .filter(
-                Team.division_id.in_(div_ids),
+        fixtures_to_delete = Fixture.query.filter(
+                Fixture.division_id.in_(div_ids),
                 Fixture.status == 'scheduled',
                 Fixture.date >= start_date
             ).all()
@@ -170,54 +169,67 @@ def submit_score(fixture_id):
     fixture.away_score = away_score
     fixture.status = 'completed'
     
-    home_team = Team.query.get(fixture.home_team_id)
-    away_team = Team.query.get(fixture.away_team_id)
-    
-    if was_completed:
-        # Reverse old stats
-        home_team.goals_for -= old_home
-        home_team.goals_against -= old_away
-        away_team.goals_for -= old_away
-        away_team.goals_against -= old_home
-
-        if old_home > old_away:
-            home_team.won -= 1
-            home_team.points -= 3
-            away_team.lost -= 1
-        elif old_away > old_home:
-            away_team.won -= 1
-            away_team.points -= 3
-            home_team.lost -= 1
-        else:
-            home_team.drawn -= 1
-            home_team.points -= 1
-            away_team.drawn -= 1
-            away_team.points -= 1
-
-        home_team.played -= 1
-        away_team.played -= 1
+    # Skip stat updates for tournament (cup) games
+    if fixture.tournament_id:
+        db.session.commit()
+        return jsonify({
+            'message': 'Score submitted successfully (Cup game, stats not updated)', 
+            'fixture': fixture.to_dict()
+        })
         
-    # Apply new stats
-    home_team.played += 1
-    home_team.goals_for += home_score
-    home_team.goals_against += away_score
-    away_team.played += 1
-    away_team.goals_for += away_score
-    away_team.goals_against += home_score
+    from app.models import TeamDivision
     
-    if home_score > away_score:
-        home_team.won += 1
-        home_team.points += 3
-        away_team.lost += 1
-    elif away_score > home_score:
-        away_team.won += 1
-        away_team.points += 3
-        home_team.lost += 1
-    else:
-        home_team.drawn += 1
-        home_team.points += 1
-        away_team.drawn += 1
-        away_team.points += 1
+    # Get TeamDivision records for the division this fixture belongs to
+    home_td = TeamDivision.query.filter_by(team_id=fixture.home_team_id, division_id=fixture.division_id).first()
+    away_td = TeamDivision.query.filter_by(team_id=fixture.away_team_id, division_id=fixture.division_id).first()
+    
+    # Only update stats if the team is still in that division
+    if home_td and away_td:
+        if was_completed:
+            # Reverse old stats
+            home_td.goals_for -= old_home
+            home_td.goals_against -= old_away
+            away_td.goals_for -= old_away
+            away_td.goals_against -= old_home
+    
+            if old_home > old_away:
+                home_td.won -= 1
+                home_td.points -= 3
+                away_td.lost -= 1
+            elif old_away > old_home:
+                away_td.won -= 1
+                away_td.points -= 3
+                home_td.lost -= 1
+            else:
+                home_td.drawn -= 1
+                home_td.points -= 1
+                away_td.drawn -= 1
+                away_td.points -= 1
+    
+            home_td.played -= 1
+            away_td.played -= 1
+            
+        # Apply new stats
+        home_td.played += 1
+        home_td.goals_for += home_score
+        home_td.goals_against += away_score
+        away_td.played += 1
+        away_td.goals_for += away_score
+        away_td.goals_against += home_score
+        
+        if home_score > away_score:
+            home_td.won += 1
+            home_td.points += 3
+            away_td.lost += 1
+        elif away_score > home_score:
+            away_td.won += 1
+            away_td.points += 3
+            home_td.lost += 1
+        else:
+            home_td.drawn += 1
+            home_td.points += 1
+            away_td.drawn += 1
+            away_td.points += 1
             
     db.session.commit()
     

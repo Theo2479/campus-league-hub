@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Target, Calendar, Clock, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
@@ -46,17 +47,35 @@ interface Fixture {
   referee?: string;
 }
 
+interface StandingRow {
+  position: number;
+  id: number;
+  name: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  points: number;
+  is_my_team: boolean;
+}
+
 const CaptainDashboard = () => {
   const { user } = useAuth();
   const [team, setTeam] = useState<TeamData | null>(null);
   const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
   const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
   const [position, setPosition] = useState<number | null>(null);
+  const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [divisionName, setDivisionName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Forfeit confirmation state
   const [forfeitFixtureId, setForfeitFixtureId] = useState<number | null>(null);
   const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,11 +95,12 @@ const CaptainDashboard = () => {
           setPastFixtures(fixturesData.past || []);
         }
 
-        // Fetch standings to get position
         const standingsRes = await apiFetch('/api/captain/standings');
         if (standingsRes.ok) {
           const standingsData = await standingsRes.json();
           setPosition(standingsData.team_position);
+          setStandings(standingsData.standings || []);
+          setDivisionName(standingsData.division?.name || null);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -92,6 +112,21 @@ const CaptainDashboard = () => {
 
     fetchData();
   }, []);
+
+  const refetchData = async () => {
+    try {
+      const teamRes = await apiFetch('/api/captain/team');
+      if (teamRes.ok) { setTeam((await teamRes.json()).team); }
+      const fixturesRes = await apiFetch('/api/captain/fixtures');
+      if (fixturesRes.ok) {
+        const d = await fixturesRes.json();
+        setUpcomingFixtures(d.upcoming || []);
+        setPastFixtures(d.past || []);
+      }
+      const standingsRes = await apiFetch('/api/captain/standings');
+      if (standingsRes.ok) { setPosition((await standingsRes.json()).team_position); }
+    } catch (e) { /* silent */ }
+  };
 
   const getActionButton = (fixture: Fixture) => {
     const fixtureDate = parseISO(fixture.date);
@@ -122,16 +157,20 @@ const CaptainDashboard = () => {
   };
 
   const handlePostpone = async (fixtureId: number) => {
+    setActionLoading(fixtureId);
     try {
       const res = await apiFetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST' });
+      const data = await res.json();
       if (res.ok) {
-        toast.success('Postponement request submitted for review');
+        toast.success(data.message || 'Postponement request submitted for review');
+        await refetchData();
       } else {
-        const data = await res.json();
         toast.error(data.error || 'Failed to submit request');
       }
     } catch (e) {
-      toast.error('Error submitting request');
+      toast.error('Network error — could not submit request');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -142,19 +181,20 @@ const CaptainDashboard = () => {
 
   const confirmForfeit = async () => {
     if (!forfeitFixtureId) return;
-
+    setActionLoading(forfeitFixtureId);
     try {
       const res = await apiFetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST' });
+      const data = await res.json();
       if (res.ok) {
-        toast.success('Match forfeited. -3 point penalty applied.');
-        window.location.reload();
+        toast.success(data.message || 'Match forfeited. -3 point penalty applied.');
+        await refetchData();
       } else {
-        const data = await res.json();
         toast.error(data.error || 'Failed to forfeit');
       }
     } catch (e) {
-      toast.error('Error processing forfeit');
+      toast.error('Network error — could not process forfeit');
     } finally {
+      setActionLoading(null);
       setShowForfeitConfirm(false);
       setForfeitFixtureId(null);
     }
@@ -328,16 +368,16 @@ const CaptainDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Division Standing Preview */}
+        {/* Division League Table */}
         <Card variant="elevated" className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-gold" />
-                Your Position
+                League Table
               </CardTitle>
               <CardDescription>
-                {team.division_name ? `${team.division_name} standings` : 'Division standings'}
+                {divisionName ? `${divisionName} standings` : team.division_name ? `${team.division_name} standings` : 'Division standings'}
               </CardDescription>
             </div>
             <Button variant="outline" onClick={() => window.location.href = '/captain/fixtures'}>
@@ -346,19 +386,59 @@ const CaptainDashboard = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="text-6xl font-bold text-gold mb-2">
-                  {position ? `#${position}` : '-'}
+            {standings.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Pos</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-center">P</TableHead>
+                    <TableHead className="text-center">W</TableHead>
+                    <TableHead className="text-center">D</TableHead>
+                    <TableHead className="text-center">L</TableHead>
+                    <TableHead className="text-center">GF</TableHead>
+                    <TableHead className="text-center">GA</TableHead>
+                    <TableHead className="text-center">GD</TableHead>
+                    <TableHead className="text-center font-bold">Pts</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {standings.map(row => (
+                    <TableRow
+                      key={row.id}
+                      className={row.is_my_team ? 'bg-gold/10 border-l-2 border-l-gold font-semibold' : ''}
+                    >
+                      <TableCell className="font-medium">
+                        {row.position}
+                        {row.position === 1 && <span className="ml-1 text-lg">🥇</span>}
+                        {row.position === 2 && <span className="ml-1 text-lg">🥈</span>}
+                        {row.position === 3 && <span className="ml-1 text-lg">🥉</span>}
+                      </TableCell>
+                      <TableCell className={row.is_my_team ? 'text-gold font-bold' : 'font-medium'}>
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-center">{row.played}</TableCell>
+                      <TableCell className="text-center">{row.won}</TableCell>
+                      <TableCell className="text-center">{row.drawn}</TableCell>
+                      <TableCell className="text-center">{row.lost}</TableCell>
+                      <TableCell className="text-center">{row.goals_for}</TableCell>
+                      <TableCell className="text-center">{row.goals_against}</TableCell>
+                      <TableCell className="text-center">{row.goal_difference >= 0 ? `+${row.goal_difference}` : row.goal_difference}</TableCell>
+                      <TableCell className="text-center font-bold text-lg text-primary">{row.points}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="text-6xl font-bold text-gold mb-2">
+                    {position ? `#${position}` : '-'}
+                  </div>
+                  <p className="text-muted-foreground">No division standings available yet</p>
                 </div>
-                <p className="text-muted-foreground">
-                  {stats.played} games played • {stats.points} points
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {stats.won}W {stats.drawn}D {stats.lost}L • GD: {stats.goal_difference >= 0 ? '+' : ''}{stats.goal_difference}
-                </p>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

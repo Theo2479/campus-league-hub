@@ -26,15 +26,37 @@ def get_captain_team():
     
     team_data = team.to_dict()
     
-    # Add division info
-    if team.division:
-        team_data['division'] = team.division.to_dict()
-        team_data['division_name'] = team.division.name
+    # Add division and stats info from the M2M relationship
+    if team.divisions:
+        # For the dashboard, we use the first division they are assigned to
+        primary_td = team.divisions[0]
+        primary_division = primary_td.division
         
-        # Add league info if available
-        if team.division.league:
-            team_data['league_name'] = team.division.league.name
-    
+        team_data['division'] = primary_division.to_dict()
+        team_data['division_name'] = primary_division.name
+        
+        if primary_division.league:
+            team_data['league_name'] = primary_division.league.name
+            
+        # Attach the stats dict expected by frontend
+        team_data['stats'] = {
+            'played': primary_td.played,
+            'won': primary_td.won,
+            'drawn': primary_td.drawn,
+            'lost': primary_td.lost,
+            'points': primary_td.points,
+            'goals_for': primary_td.goals_for,
+            'goals_against': primary_td.goals_against,
+            'goal_difference': primary_td.goal_difference
+        }
+    else:
+        # Fallback empty stats if not in a division
+        team_data['stats'] = {
+            'played': 0, 'won': 0, 'drawn': 0, 'lost': 0,
+            'points': 0, 'goals_for': 0, 'goals_against': 0,
+            'goal_difference': 0
+        }
+        
     return jsonify({'team': team_data})
 
 
@@ -108,37 +130,46 @@ def get_captain_standings():
         return jsonify({'error': 'Unauthorized'}), 403
     
     team = current_user.captain_of
-    if not team or not team.division:
+    if not team:
         return jsonify({'standings': [], 'division': None, 'team_position': None})
     
-    division = team.division
-    teams = list(division.teams)
+    # Find which divisions this captain's team is in
     
-    # Sort by points, goal difference, goals for
+    # Get all TeamDivision associations for this team
+    td_assocs = TeamDivision.query.filter_by(team_id=team.id).all()
+    if not td_assocs:
+        return jsonify({'standings': [], 'leagueName': 'Not assigned'})
+        
+    # By default, show standings for the first division
+    division = td_assocs[0].division
+    
+    # Get all team division records for this division
+    division_teams = TeamDivision.query.filter_by(division_id=division.id).all()
+    
     sorted_teams = sorted(
-        teams,
-        key=lambda t: (t.points, t.goal_difference, t.goals_for),
+        division_teams,
+        key=lambda td: (td.points, td.goal_difference, td.goals_for),
         reverse=True
     )
     
     standings = []
     team_position = None
-    for pos, t in enumerate(sorted_teams, 1):
-        if t.id == team.id:
+    for pos, td in enumerate(sorted_teams, 1):
+        if td.team.id == team.id:
             team_position = pos
         standings.append({
             'position': pos,
-            'id': t.id,
-            'name': t.name,
-            'played': t.played,
-            'won': t.won,
-            'drawn': t.drawn,
-            'lost': t.lost,
-            'goals_for': t.goals_for,
-            'goals_against': t.goals_against,
-            'goal_difference': t.goal_difference,
-            'points': t.points,
-            'is_my_team': t.id == team.id
+            'id': td.team.id,
+            'name': td.team.name,
+            'played': td.played,
+            'won': td.won,
+            'drawn': td.drawn,
+            'lost': td.lost,
+            'goals_for': td.goals_for,
+            'goals_against': td.goals_against,
+            'goal_difference': td.goal_difference,
+            'points': td.points,
+            'is_my_team': td.team.id == team.id
         })
     
     return jsonify({
@@ -176,17 +207,24 @@ def captain_forfeit_fixture(id):
     forfeiting_team = team
     winning_team = fixture.away_team if is_home else fixture.home_team
     
-    # Update forfeiting team stats (loss + -3 penalty)
-    forfeiting_team.played += 1
-    forfeiting_team.lost += 1
-    forfeiting_team.goals_against += 3
-    forfeiting_team.points -= 3  # -3 penalty per KEYPLAN
-    
-    # Update winning team stats (3-0 win)
-    winning_team.played += 1
-    winning_team.won += 1
-    winning_team.goals_for += 3
-    winning_team.points += 3
+    # Update stats if it is a league game
+    if not fixture.tournament_id:
+        from app.models import TeamDivision
+        forfeiting_td = TeamDivision.query.filter_by(team_id=forfeiting_team.id, division_id=fixture.division_id).first()
+        winning_td = TeamDivision.query.filter_by(team_id=winning_team.id, division_id=fixture.division_id).first()
+        
+        if forfeiting_td and winning_td:
+            # Update forfeiting team stats (loss + -3 penalty)
+            forfeiting_td.played += 1
+            forfeiting_td.lost += 1
+            forfeiting_td.goals_against += 3
+            forfeiting_td.points -= 3  # -3 penalty per KEYPLAN
+            
+            # Update winning team stats (3-0 win)
+            winning_td.played += 1
+            winning_td.won += 1
+            winning_td.goals_for += 3
+            winning_td.points += 3
     
     # Notify admin
     admins = User.query.filter_by(role='admin').all()

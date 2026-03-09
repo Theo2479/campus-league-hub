@@ -35,6 +35,7 @@ import RefereeManagement from "./pages/admin/RefereeManagement";
 import CaptainManagement from "./pages/admin/CaptainManagement";
 import EmergencyControl from "./pages/admin/EmergencyControl";
 import AdminAllocation from "./pages/admin/AdminAllocation";
+import KnockoutTournament from "./pages/admin/KnockoutTournament";
 
 const queryClient = new QueryClient();
 
@@ -200,6 +201,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminAllocation />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/knockout"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <KnockoutTournament />
           </ProtectedRoute>
         }
       />
