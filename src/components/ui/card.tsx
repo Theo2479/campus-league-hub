@@ -14,12 +14,12 @@ const cardVariants = cva(
         navy: "bg-navy text-gold border-navy-light",
         gold: "bg-gold/10 border-gold/30",
         urgent: "bg-destructive/5 border-destructive/30",
-        success: "bg-success-light border-success/30",
-      },
+        success: "bg-success-light border-success/30"
+      }
     },
     defaultVariants: {
-      variant: "default",
-    },
+      variant: "default"
+    }
   }
 );
 

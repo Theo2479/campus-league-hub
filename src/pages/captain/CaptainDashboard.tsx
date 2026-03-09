@@ -10,6 +10,7 @@ import { format, differenceInHours, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { apiFetch } from '@/lib/api';
 
 interface TeamStats {
   played: number;
@@ -61,14 +62,14 @@ const CaptainDashboard = () => {
     const fetchData = async () => {
       try {
         // Fetch team data
-        const teamRes = await fetch('/api/captain/team', { credentials: 'include' });
+        const teamRes = await apiFetch('/api/captain/team');
         if (teamRes.ok) {
           const teamData = await teamRes.json();
           setTeam(teamData.team);
         }
 
         // Fetch fixtures
-        const fixturesRes = await fetch('/api/captain/fixtures', { credentials: 'include' });
+        const fixturesRes = await apiFetch('/api/captain/fixtures');
         if (fixturesRes.ok) {
           const fixturesData = await fixturesRes.json();
           setUpcomingFixtures(fixturesData.upcoming || []);
@@ -76,7 +77,7 @@ const CaptainDashboard = () => {
         }
 
         // Fetch standings to get position
-        const standingsRes = await fetch('/api/captain/standings', { credentials: 'include' });
+        const standingsRes = await apiFetch('/api/captain/standings');
         if (standingsRes.ok) {
           const standingsData = await standingsRes.json();
           setPosition(standingsData.team_position);
@@ -122,7 +123,7 @@ const CaptainDashboard = () => {
 
   const handlePostpone = async (fixtureId: number) => {
     try {
-      const res = await fetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST' });
       if (res.ok) {
         toast.success('Postponement request submitted for review');
       } else {
@@ -143,7 +144,7 @@ const CaptainDashboard = () => {
     if (!forfeitFixtureId) return;
 
     try {
-      const res = await fetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST' });
       if (res.ok) {
         toast.success('Match forfeited. -3 point penalty applied.');
         window.location.reload();

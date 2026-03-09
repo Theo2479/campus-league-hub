@@ -13,7 +13,7 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useSocket } from '@/hooks/useSocket';
+import { apiFetch } from '@/lib/api';
 
 interface ChatChannel {
     id: number;
@@ -181,9 +182,7 @@ const ChatPage = () => {
 
         searchTimeoutRef.current = setTimeout(async () => {
             try {
-                const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`, {
-                    credentials: 'include'
-                });
+                const res = await apiFetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
                 if (res.ok) {
                     const data = await res.json();
                     setSearchResults(data.users);
@@ -204,7 +203,7 @@ const ChatPage = () => {
     // Fetch all users for group chat creation
     const fetchAllUsers = async () => {
         try {
-            const res = await fetch('/api/users/search?q=', { credentials: 'include' });
+            const res = await apiFetch('/api/users/search?q=');
             if (res.ok) {
                 const data = await res.json();
                 setAllUsers(data.users);
@@ -216,7 +215,7 @@ const ChatPage = () => {
 
     const fetchChats = async () => {
         try {
-            const res = await fetch('/api/chats', { credentials: 'include' });
+            const res = await apiFetch('/api/chats');
             if (res.ok) {
                 const data = await res.json();
                 setChats(data.chats);
@@ -230,7 +229,7 @@ const ChatPage = () => {
 
     const fetchMessages = async (chatId: number) => {
         try {
-            const res = await fetch(`/api/chats/${chatId}/messages`, { credentials: 'include' });
+            const res = await apiFetch(`/api/chats/${chatId}/messages`);
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data.messages);
@@ -269,11 +268,11 @@ const ChatPage = () => {
             sendMessage(selectedChatId, newMessage.trim());
             setNewMessage('');
         } else {
-            fetch(`/api/chats/${selectedChatId}/messages`, {
+            apiFetch(`/api/chats/${selectedChatId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newMessage.trim() }),
-                credentials: 'include'
+                body: JSON.stringify({ content: newMessage.trim() })
+                
             }).then(res => {
                 if (res.ok) {
                     setNewMessage('');
@@ -297,11 +296,11 @@ const ChatPage = () => {
         } else {
             // Create new chat
             try {
-                const res = await fetch('/api/chats/direct', {
+                const res = await apiFetch('/api/chats/direct', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: searchUser.id }),
-                    credentials: 'include'
+                    body: JSON.stringify({ user_id: searchUser.id })
+                    
                 });
 
                 if (res.ok) {
@@ -326,14 +325,14 @@ const ChatPage = () => {
         }
 
         try {
-            const res = await fetch('/api/chats/group', {
+            const res = await apiFetch('/api/chats/group', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: groupName.trim() || undefined,
                     user_ids: selectedUsers.map(u => u.id)
-                }),
-                credentials: 'include'
+                })
+                
             });
 
             if (res.ok) {
@@ -376,14 +375,14 @@ const ChatPage = () => {
         }
 
         try {
-            const res = await fetch('/api/chats/announcement', {
+            const res = await apiFetch('/api/chats/announcement', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: announcementTitle.trim() || undefined,
                     content: announcementContent.trim()
-                }),
-                credentials: 'include'
+                })
+                
             });
 
             if (res.ok) {
@@ -772,9 +771,9 @@ const ChatPage = () => {
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={async () => {
                                 try {
-                                    const res = await fetch(`/api/chats/${selectedChatId}`, {
-                                        method: 'DELETE',
-                                        credentials: 'include'
+                                    const res = await apiFetch(`/api/chats/${selectedChatId}`, {
+                                        method: 'DELETE'
+                                        
                                     });
                                     if (res.ok) {
                                         toast.success('Chat deleted');

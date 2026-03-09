@@ -11,7 +11,7 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from '@/components/ui/select';
 import {
     Table,
@@ -19,7 +19,7 @@ import {
     TableCell,
     TableHead,
     TableHeader,
-    TableRow,
+    TableRow
 } from '@/components/ui/table';
 import {
     Dialog,
@@ -27,7 +27,7 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from '@/components/ui/dialog';
 import {
     AlertDialog,
@@ -37,10 +37,11 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Users, Plus, Trash2, Loader2, UserPlus, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api';
 
 interface Captain {
     id: number;
@@ -74,7 +75,7 @@ const CaptainManagement = () => {
 
     const fetchCaptains = async () => {
         try {
-            const res = await fetch('/api/admin/captains', { credentials: 'include' });
+            const res = await apiFetch('/api/admin/captains');
             if (res.ok) {
                 const data = await res.json();
                 setCaptains(data.captains || []);
@@ -91,7 +92,7 @@ const CaptainManagement = () => {
 
     const fetchTeams = async () => {
         try {
-            const res = await fetch('/api/admin/teams', { credentials: 'include' });
+            const res = await apiFetch('/api/admin/teams');
             if (res.ok) {
                 const data = await res.json();
                 setTeams(data.teams || []);
@@ -124,10 +125,9 @@ const CaptainManagement = () => {
 
         setIsSubmitting(true);
         try {
-            const res = await fetch('/api/admin/captains', {
+            const res = await apiFetch('/api/admin/captains', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({
                     username: newUsername.trim(),
                     name: newName.trim() || newUsername.trim(),
@@ -162,9 +162,9 @@ const CaptainManagement = () => {
         if (!captainToDelete) return;
 
         try {
-            const res = await fetch(`/api/admin/captains/${captainToDelete.id}`, {
-                method: 'DELETE',
-                credentials: 'include'
+            const res = await apiFetch(`/api/admin/captains/${captainToDelete.id}`, {
+                method: 'DELETE'
+                
             });
 
             if (res.ok) {

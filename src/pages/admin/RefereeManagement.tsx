@@ -12,7 +12,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRow
 } from '@/components/ui/table';
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -30,10 +30,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Users, Plus, Trash2, Loader2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api';
 
 interface Referee {
   id: number;
@@ -61,7 +62,7 @@ const RefereeManagement = () => {
 
   const fetchReferees = async () => {
     try {
-      const res = await fetch('/api/admin/referees', { credentials: 'include' });
+      const res = await apiFetch('/api/admin/referees');
       if (res.ok) {
         const data = await res.json();
         setReferees(data.referees || []);
@@ -93,10 +94,9 @@ const RefereeManagement = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/admin/referees', {
+      const res = await apiFetch('/api/admin/referees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           username: newUsername.trim(),
           name: newName.trim() || newUsername.trim(),
@@ -129,9 +129,9 @@ const RefereeManagement = () => {
     if (!refToDelete) return;
 
     try {
-      const res = await fetch(`/api/admin/referees/${refToDelete.id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await apiFetch(`/api/admin/referees/${refToDelete.id}`, {
+        method: 'DELETE'
+        
       });
 
       if (res.ok) {

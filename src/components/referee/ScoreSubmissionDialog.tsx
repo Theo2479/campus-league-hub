@@ -5,12 +5,13 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { apiFetch } from '@/lib/api';
 
 interface ScoreSubmissionDialogProps {
     isOpen: boolean;
@@ -27,7 +28,7 @@ export function ScoreSubmissionDialog({
     gameId,
     homeTeamName,
     awayTeamName,
-    onSuccess,
+    onSuccess
 }: ScoreSubmissionDialogProps) {
     const [homeScore, setHomeScore] = useState("");
     const [awayScore, setAwayScore] = useState("");
@@ -38,16 +39,15 @@ export function ScoreSubmissionDialog({
         setIsSubmitting(true);
 
         try {
-            const response = await fetch(`/api/fixtures/${gameId}/score`, {
+            const response = await apiFetch(`/api/fixtures/${gameId}/score`, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/json"
                 },
-                credentials: 'include',
                 body: JSON.stringify({
                     home_score: parseInt(homeScore),
-                    away_score: parseInt(awayScore),
-                }),
+                    away_score: parseInt(awayScore)
+                })
             });
 
             if (!response.ok) {

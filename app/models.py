@@ -1,7 +1,7 @@
 from app import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -140,9 +140,9 @@ class Fixture(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'home_team': self.home_team.name,
-            'away_team': self.away_team.name,
-            'date': self.date.isoformat(),
+            'home_team': self.home_team.name if self.home_team else 'Unknown',
+            'away_team': self.away_team.name if self.away_team else 'Unknown',
+            'date': self.date.isoformat() if self.date else None,
             'time': self.time_slot,
             'venue': self.pitch,
             'status': self.status,
@@ -207,7 +207,7 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     type = db.Column(db.String(20), default='info') # urgent, info, success
     read = db.Column(db.Boolean, default=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     def to_dict(self):
         return {
@@ -225,7 +225,7 @@ class PostponementRequest(db.Model):
     requester_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
     reason = db.Column(db.Text)
     status = db.Column(db.String(20), default='pending') # pending, approved, denied
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    submitted_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     fixture = db.relationship('Fixture', backref='postponement_requests')
@@ -234,12 +234,12 @@ class PostponementRequest(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'teamName': self.requester_team.name,
-            'fixture': f"{self.fixture.home_team.name} vs {self.fixture.away_team.name}",
+            'teamName': self.requester_team.name if self.requester_team else 'Unknown',
+            'fixture': f"{self.fixture.home_team.name if self.fixture and self.fixture.home_team else '?'} vs {self.fixture.away_team.name if self.fixture and self.fixture.away_team else '?'}" if self.fixture else 'Unknown Fixture',
             'reason': self.reason,
             'status': self.status,
-            'submittedAt': self.submitted_at.isoformat(),
-            'requestedDate': self.fixture.date.isoformat(), # Just showing original date for now contexts
+            'submittedAt': self.submitted_at.isoformat() if self.submitted_at else None,
+            'requestedDate': self.fixture.date.isoformat() if self.fixture and self.fixture.date else None,
             'fixture_id': self.fixture_id
         }
 
@@ -252,7 +252,7 @@ class ChatChannel(db.Model):
     name = db.Column(db.String(100)) # Optional, e.g., "TEAM A vs TEAM B"
     type = db.Column(db.String(20)) # 'direct', 'game', 'announcement'
     fixture_id = db.Column(db.Integer, db.ForeignKey('fixture.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     participants = db.relationship('ChatParticipant', backref='channel', lazy='dynamic', cascade="all, delete-orphan")
     messages = db.relationship('ChatMessage', backref='channel', lazy='dynamic', cascade="all, delete-orphan")
@@ -272,7 +272,7 @@ class ChatChannel(db.Model):
         if last_msg:
             return {
                 'content': last_msg.content,
-                'sender_name': last_msg.sender.name,
+                'sender_name': last_msg.sender.name if last_msg.sender else '[Deleted User]',
                 'timestamp': last_msg.timestamp.isoformat()
             }
         return None
@@ -281,7 +281,7 @@ class ChatParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True)
     channel_id = db.Column(db.Integer, db.ForeignKey('chat_channel.id', ondelete='CASCADE'), nullable=False)
-    last_read_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_read_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     user = db.relationship('User', backref=db.backref('chat_participations', lazy='dynamic', cascade="all, delete-orphan", passive_deletes=True))
 
@@ -292,7 +292,7 @@ class ChatMessage(db.Model):
     channel_id = db.Column(db.Integer, db.ForeignKey('chat_channel.id', ondelete='CASCADE'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     sender = db.relationship('User', backref=db.backref('messages_sent', lazy='dynamic', passive_deletes=True))
     
@@ -316,7 +316,7 @@ class FriendlyPost(db.Model):
     venue_preference = db.Column(db.String(100))
     notes = db.Column(db.Text)
     status = db.Column(db.String(20), default='open')  # open, matched, expired
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     team = db.relationship('Team', backref='friendly_posts')
     captain = db.relationship('User', backref='friendly_posts')

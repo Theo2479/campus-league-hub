@@ -8,6 +8,7 @@ import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { apiFetch } from '@/lib/api';
 
 interface PostponementRequest {
   id: number;
@@ -25,7 +26,7 @@ const AdminApprovals = () => {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch('/api/admin/approvals', { credentials: 'include' });
+      const res = await apiFetch('/api/admin/approvals');
       if (res.ok) {
         const data = await res.json();
         setRequests(data.requests || []);
@@ -47,7 +48,7 @@ const AdminApprovals = () => {
 
   const handleApprove = async (id: number) => {
     try {
-      const res = await fetch(`/api/admin/approvals/${id}/approve`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/admin/approvals/${id}/approve`, { method: 'POST' });
       if (res.ok) {
         toast.success('Request approved. Teams have been notified.');
         fetchRequests();
@@ -61,7 +62,7 @@ const AdminApprovals = () => {
 
   const handleDeny = async (id: number) => {
     try {
-      const res = await fetch(`/api/admin/approvals/${id}/deny`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/admin/approvals/${id}/deny`, { method: 'POST' });
       if (res.ok) {
         toast.success('Request denied. Teams have been notified.');
         fetchRequests();
@@ -75,7 +76,7 @@ const AdminApprovals = () => {
 
   const RequestCard = ({
     request,
-    showActions,
+    showActions
   }: {
     request: PostponementRequest;
     showActions: boolean;

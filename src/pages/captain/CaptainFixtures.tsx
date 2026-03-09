@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { apiFetch } from '@/lib/api';
 
 interface Fixture {
   id: number;
@@ -40,9 +41,7 @@ const CaptainFixtures = () => {
   useEffect(() => {
     const fetchFixtures = async () => {
       try {
-        const response = await fetch('/api/captain/fixtures', {
-          credentials: 'include',
-        });
+        const response = await apiFetch('/api/captain/fixtures');
         if (response.ok) {
           const data = await response.json();
           setUpcomingGames(data.upcoming || []);
@@ -71,7 +70,7 @@ const CaptainFixtures = () => {
     if (!forfeitFixtureId) return;
 
     try {
-      const res = await fetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/captain/fixtures/${forfeitFixtureId}/forfeit`, { method: 'POST' });
       if (res.ok) {
         toast.success('Match forfeited. -3 point penalty applied.');
         // Refresh
@@ -90,7 +89,7 @@ const CaptainFixtures = () => {
 
   const handlePostpone = async (fixtureId: number) => {
     try {
-      const res = await fetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/captain/fixtures/${fixtureId}/postpone`, { method: 'POST' });
       if (res.ok) {
         toast.success('Postponement request submitted for review');
       } else {

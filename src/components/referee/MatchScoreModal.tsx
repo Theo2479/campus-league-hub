@@ -7,11 +7,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api';
 
 interface MatchScoreModalProps {
   fixture: any;
@@ -34,16 +35,15 @@ export function MatchScoreModal({ fixture, onScoreSubmitted, trigger }: MatchSco
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/fixtures/${fixture.id}/score`, {
+      const response = await apiFetch(`/api/fixtures/${fixture.id}/score`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        credentials: 'include',
         body: JSON.stringify({
           home_score: parseInt(homeScore),
-          away_score: parseInt(awayScore),
-        }),
+          away_score: parseInt(awayScore)
+        })
       });
 
       if (!response.ok) {

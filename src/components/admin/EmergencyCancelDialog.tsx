@@ -10,12 +10,12 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from '@/components/ui/dialog';
 import {
     Popover,
     PopoverContent,
-    PopoverTrigger,
+    PopoverTrigger
 } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,7 +24,7 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from '@/components/ui/select';
 import {
     AlertDialog,
@@ -34,9 +34,10 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api';
 
 interface EmergencyCancelDialogProps {
     open: boolean;
@@ -55,7 +56,7 @@ const emergencyReasons = [
 export function EmergencyCancelDialog({
     open,
     onOpenChange,
-    onSuccess,
+    onSuccess
 }: EmergencyCancelDialogProps) {
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [reason, setReason] = useState<string>('');
@@ -81,15 +82,15 @@ export function EmergencyCancelDialog({
         setLoading(true);
         try {
             const formattedDate = format(date, 'yyyy-MM-dd');
-            const res = await fetch('/api/admin/fixtures/cancel-day', {
+            const res = await apiFetch('/api/admin/fixtures/cancel-day', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     date: formattedDate,
                     reason,
-                    message,
+                    message
                 }),
-                credentials: 'include',
+                
             });
 
             const data = await res.json();

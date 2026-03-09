@@ -10,6 +10,7 @@ import { Loader2, Calendar, User as UserIcon, Lock, Unlock, Users, AlertTriangle
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
+import { apiFetch } from '@/lib/api';
 
 interface AllocationResult {
     fixture_id: number;
@@ -43,7 +44,7 @@ const AdminAllocation = () => {
 
     const fetchWindowStatus = async () => {
         try {
-            const res = await fetch('/api/admin/availability-window', { credentials: 'include' });
+            const res = await apiFetch('/api/admin/availability-window');
             if (res.ok) {
                 const data = await res.json();
                 if (data.startDate) setStartDate(data.startDate);
@@ -64,15 +65,15 @@ const AdminAllocation = () => {
         }
         setWindowLoading(true);
         try {
-            const res = await fetch('/api/admin/availability-window', {
+            const res = await apiFetch('/api/admin/availability-window', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     startDate,
                     endDate,
                     isOpen: open
-                }),
-                credentials: 'include'
+                })
+                
             });
             if (res.ok) {
                 setIsWindowOpen(open);
@@ -92,11 +93,11 @@ const AdminAllocation = () => {
         }
         setCheckingInterest(true);
         try {
-            const response = await fetch('/api/admin/referee-coverage', {
+            const response = await apiFetch('/api/admin/referee-coverage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ startDate, endDate }),
-                credentials: 'include'
+                body: JSON.stringify({ startDate, endDate })
+                
             });
 
             if (response.ok) {
@@ -130,25 +131,24 @@ const AdminAllocation = () => {
         setLoading(true);
         try {
             // 1. Close window
-            await fetch('/api/admin/availability-window', {
+            await apiFetch('/api/admin/availability-window', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isOpen: false }),
-                credentials: 'include'
+                body: JSON.stringify({ isOpen: false })
+                
             });
             setIsWindowOpen(false);
 
             // 2. Run allocation
-            const response = await fetch('/api/admin/allocate', {
+            const response = await apiFetch('/api/admin/allocate', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                credentials: 'include',
                 body: JSON.stringify({
                     startDate,
-                    endDate,
-                }),
+                    endDate
+                })
             });
 
             if (response.ok) {

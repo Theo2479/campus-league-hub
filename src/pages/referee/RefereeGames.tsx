@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ScoreSubmissionDialog } from '@/components/referee/ScoreSubmissionDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { apiFetch } from '@/lib/api';
 
 // Define types matching the API response
 interface Game {
@@ -35,7 +36,7 @@ const RefereeGames = () => {
 
   const fetchGames = async () => {
     try {
-      const response = await fetch('/api/referee/my-games', { credentials: 'include' });
+      const response = await apiFetch('/api/referee/my-games');
       if (response.ok) {
         const data = await response.json();
         // The API returns { assigned: [], interested: [] }
@@ -63,9 +64,9 @@ const RefereeGames = () => {
     if (!dropoutGameId) return;
 
     try {
-      const res = await fetch(`/api/referee/games/${dropoutGameId}/dropout`, {
-        method: 'POST',
-        credentials: 'include'
+      const res = await apiFetch(`/api/referee/games/${dropoutGameId}/dropout`, {
+        method: 'POST'
+        
       });
 
       if (res.ok) {

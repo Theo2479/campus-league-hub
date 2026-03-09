@@ -6,6 +6,9 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import FriendlyPost, User, ChatChannel, ChatParticipant, ChatMessage
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 friendly = Blueprint('friendly', __name__)
 

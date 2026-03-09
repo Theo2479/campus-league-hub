@@ -10,6 +10,9 @@ from app.models import (
 )
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import logging
+
+logger = logging.getLogger(__name__)
 
 referee = Blueprint('referee', __name__)
 

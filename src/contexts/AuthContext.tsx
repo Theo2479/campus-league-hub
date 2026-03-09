@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiFetch } from '@/lib/api';
 
 export type UserRole = 'admin' | 'referee' | 'captain';
 
@@ -33,9 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include',
-        });
+        const response = await apiFetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
           if (data.user) {
@@ -52,13 +51,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (username: string, password: string) => {
-    const response = await fetch('/api/auth/login', {
+    const response = await apiFetch('/api/auth/login', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      credentials: 'include',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password })
     });
 
     if (!response.ok) {
@@ -72,9 +70,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await apiFetch('/api/auth/logout', {
         method: 'POST',
-        credentials: 'include',
+        
       });
     } catch (error) {
       console.error('Logout failed:', error);

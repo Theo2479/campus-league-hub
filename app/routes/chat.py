@@ -5,6 +5,9 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
 from app.models import ChatChannel, ChatParticipant, ChatMessage, User, Fixture
+import logging
+
+logger = logging.getLogger(__name__)
 
 chat = Blueprint('chat', __name__)
 
@@ -20,13 +23,13 @@ def ensure_game_chat(fixture_id):
     # Always get fresh fixture data from DB
     fixture = Fixture.query.get(fixture_id)
     if not fixture:
-        print(f"[Chat] WARNING: Fixture {fixture_id} not found")
+        logger.warning(f"Fixture {fixture_id} not found for chat creation")
         return None
     
     # Debug log
-    print(f"[Chat] Ensuring chat for fixture {fixture_id}: {fixture.home_team.name} vs {fixture.away_team.name}")
-    print(f"[Chat] Home team captain: {fixture.home_team.captain_id}, Away team captain: {fixture.away_team.captain_id}")
-    print(f"[Chat] Referee: {fixture.ref_id}")
+    logger.info(f"Ensuring chat for fixture {fixture_id}: {fixture.home_team.name} vs {fixture.away_team.name}")
+    logger.debug(f"Home team captain: {fixture.home_team.captain_id}, Away team captain: {fixture.away_team.captain_id}")
+    logger.debug(f"Referee: {fixture.ref_id}")
     
     # Check if chat exists
     channel = ChatChannel.query.filter_by(fixture_id=fixture.id, type='game').first()
@@ -39,12 +42,12 @@ def ensure_game_chat(fixture_id):
         )
         db.session.add(channel)
         db.session.flush()  # Get ID
-        print(f"[Chat] Created new channel {channel.id} for fixture {fixture_id}")
+        logger.info(f"Created new channel {channel.id} for fixture {fixture_id}")
     else:
         # Update channel name in case teams changed
         expected_name = f"{fixture.home_team.name} vs {fixture.away_team.name}"
         if channel.name != expected_name:
-            print(f"[Chat] Updating channel name from '{channel.name}' to '{expected_name}'")
+            logger.info(f"Updating channel name from '{channel.name}' to '{expected_name}'")
             channel.name = expected_name
     
     # Add home team captain
@@ -58,7 +61,7 @@ def ensure_game_chat(fixture_id):
                 user_id=fixture.home_team.captain_id, 
                 channel_id=channel.id
             ))
-            print(f"[Chat] Added home captain {fixture.home_team.captain_id} to channel")
+            logger.debug(f"Added home captain {fixture.home_team.captain_id} to channel")
     
     # Add away team captain
     if fixture.away_team.captain_id:
@@ -71,7 +74,7 @@ def ensure_game_chat(fixture_id):
                 user_id=fixture.away_team.captain_id, 
                 channel_id=channel.id
             ))
-            print(f"[Chat] Added away captain {fixture.away_team.captain_id} to channel")
+            logger.debug(f"Added away captain {fixture.away_team.captain_id} to channel")
             
     # Add referee if assigned
     if fixture.ref_id:
@@ -84,7 +87,7 @@ def ensure_game_chat(fixture_id):
                 user_id=fixture.ref_id, 
                 channel_id=channel.id
             ))
-            print(f"[Chat] Added referee {fixture.ref_id} to channel")
+            logger.debug(f"Added referee {fixture.ref_id} to channel")
              
             # Add system message
             db.session.add(ChatMessage(

@@ -4,6 +4,7 @@ import { MessageSquare, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { apiFetch } from '@/lib/api';
 
 interface ChatPreview {
     id: number;
@@ -22,7 +23,7 @@ export function RecentChatsWidget() {
     useEffect(() => {
         const fetchRecent = async () => {
             try {
-                const res = await fetch('/api/chats', { credentials: 'include' });
+                const res = await apiFetch('/api/chats');
                 if (res.ok) {
                     const data = await res.json();
                     // Take top 3

@@ -15,8 +15,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { apiFetch } from '@/lib/api';
 
 interface Notification {
   id: number;
@@ -30,13 +31,13 @@ interface Notification {
 const typeIcons = {
   urgent: AlertTriangle,
   info: Info,
-  success: CheckCircle,
+  success: CheckCircle
 };
 
 const typeStyles = {
   urgent: 'bg-destructive/10 text-destructive border-destructive/30',
   info: 'bg-blue-50 text-blue-600 border-blue-200',
-  success: 'bg-success-light text-success border-success/30',
+  success: 'bg-success-light text-success border-success/30'
 };
 
 const Notifications = () => {
@@ -46,7 +47,7 @@ const Notifications = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('/api/notifications', { credentials: 'include' });
+      const res = await apiFetch('/api/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications || []);
@@ -69,7 +70,7 @@ const Notifications = () => {
 
   const markAsRead = async (id: number) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, { method: 'POST', credentials: 'include' });
+      await apiFetch(`/api/notifications/${id}/read`, { method: 'POST' });
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, read: true } : n))
       );
@@ -80,7 +81,7 @@ const Notifications = () => {
 
   const markAllAsRead = async () => {
     try {
-      await fetch('/api/notifications/mark-all-read', { method: 'POST', credentials: 'include' });
+      await apiFetch('/api/notifications/mark-all-read', { method: 'POST' });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       toast.success('All notifications marked as read');
     } catch (error) {
@@ -90,9 +91,9 @@ const Notifications = () => {
 
   const handleClearAll = async () => {
     try {
-      const res = await fetch('/api/notifications/clear-all', {
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await apiFetch('/api/notifications/clear-all', {
+        method: 'DELETE'
+        
       });
       if (res.ok) {
         setNotifications([]);

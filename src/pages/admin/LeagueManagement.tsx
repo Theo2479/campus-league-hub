@@ -46,12 +46,12 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog';
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
+  CollapsibleTrigger
 } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -62,8 +62,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { apiFetch } from '@/lib/api';
 
 const LeagueManagement = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -123,7 +124,7 @@ const LeagueManagement = () => {
 
   const fetchTeams = async () => {
     try {
-      const res = await fetch('/api/admin/teams', { credentials: 'include' });
+      const res = await apiFetch('/api/admin/teams');
       if (res.ok) {
         const data = await res.json();
         const teams = data.teams.map((t: any) => ({
@@ -140,7 +141,7 @@ const LeagueManagement = () => {
 
   const fetchLeagues = async () => {
     try {
-      const res = await fetch('/api/admin/leagues', { credentials: 'include' });
+      const res = await apiFetch('/api/admin/leagues');
       if (res.ok) {
         const data = await res.json();
         const mapped = data.leagues.map((l: any) => ({
@@ -172,14 +173,14 @@ const LeagueManagement = () => {
     }
 
     try {
-      const res = await fetch('/api/admin/leagues', {
+      const res = await apiFetch('/api/admin/leagues', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newLeagueName,
-          day: newLeagueDay,
-        }),
-        credentials: 'include'
+          day: newLeagueDay
+        })
+        
       });
 
       if (res.ok) {
@@ -213,7 +214,7 @@ const LeagueManagement = () => {
         url = `/api/admin/divisions/${deleteTargetId}`;
       }
 
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
+      const res = await apiFetch(url, { method: 'DELETE' });
 
       if (res.ok) {
         toast.success(`${deleteType === 'league' ? 'League' : 'Division'} deleted`);
@@ -243,11 +244,11 @@ const LeagueManagement = () => {
     }
 
     try {
-      const res = await fetch(`/api/admin/leagues/${selectedLeagueId}/divisions`, {
+      const res = await apiFetch(`/api/admin/leagues/${selectedLeagueId}/divisions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newDivisionName }),
-        credentials: 'include'
+        body: JSON.stringify({ name: newDivisionName })
+        
       });
 
       if (res.ok) {
@@ -280,11 +281,11 @@ const LeagueManagement = () => {
     if (!selectedDivision) return;
 
     try {
-      const res = await fetch(`/api/admin/divisions/${selectedDivision.id}/teams`, {
+      const res = await apiFetch(`/api/admin/divisions/${selectedDivision.id}/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamIdentifiers: selectedTeamIds }),
-        credentials: 'include'
+        body: JSON.stringify({ teamIdentifiers: selectedTeamIds })
+        
       });
 
       if (res.ok) {
@@ -331,15 +332,14 @@ const LeagueManagement = () => {
     setIsGenerating(true);
 
     try {
-      const response = await fetch(`/api/leagues/${generateLeagueId}/generate-fixtures`, {
+      const response = await apiFetch(`/api/leagues/${generateLeagueId}/generate-fixtures`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        credentials: 'include',
         body: JSON.stringify({
           date: generateStartDate
-        }),
+        })
       });
 
       if (!response.ok) {

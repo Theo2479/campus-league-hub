@@ -27,6 +27,7 @@ interface APIFixture {
 }
 
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 // ... (previous imports)
 
@@ -41,8 +42,8 @@ const RefereeDashboard = () => {
   const fetchData = async () => {
     try {
       const [gamesRes, windowRes] = await Promise.all([
-        fetch('/api/referee/my-games', { credentials: 'include' }),
-        fetch('/api/admin/availability-window', { credentials: 'include' })
+        apiFetch('/api/referee/my-games'),
+        apiFetch('/api/admin/availability-window')
       ]);
 
       if (gamesRes.ok) {
@@ -69,9 +70,9 @@ const RefereeDashboard = () => {
 
   const handlePickup = async (gameId: number) => {
     try {
-      const res = await fetch(`/api/referee/games/${gameId}/pickup`, {
-        method: 'POST',
-        credentials: 'include'
+      const res = await apiFetch(`/api/referee/games/${gameId}/pickup`, {
+        method: 'POST'
+        
       });
 
       if (res.ok) {

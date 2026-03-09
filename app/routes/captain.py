@@ -5,7 +5,10 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
 from app.models import Fixture, Notification, PostponementRequest, User
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 captain = Blueprint('captain', __name__)
 
@@ -46,7 +49,7 @@ def get_captain_fixtures():
     if not team:
         return jsonify({'upcoming': [], 'past': []})
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # Upcoming fixtures
     upcoming = Fixture.query.filter(

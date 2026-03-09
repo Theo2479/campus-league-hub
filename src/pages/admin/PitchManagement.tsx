@@ -18,7 +18,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import {
   Dialog,
@@ -26,9 +26,10 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { apiFetch } from '@/lib/api';
 
 
 interface PitchSlot {
@@ -81,7 +82,7 @@ const PitchManagement = () => {
       endDate.setDate(endDate.getDate() + 56); // 8 weeks
       const endStr = formatDate(endDate);
 
-      const res = await fetch(`/api/admin/pitches/availability-summary?start_date=${startStr}&end_date=${endStr}`, { credentials: 'include' });
+      const res = await apiFetch(`/api/admin/pitches/availability-summary?start_date=${startStr}&end_date=${endStr}`);
       if (res.ok) {
         const data = await res.json();
         setPitches(data.pitches);
@@ -109,11 +110,11 @@ const PitchManagement = () => {
     if (!newPitchName.trim()) return;
 
     try {
-      const res = await fetch('/api/admin/pitches', {
+      const res = await apiFetch('/api/admin/pitches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newPitchName }),
-        credentials: 'include'
+        body: JSON.stringify({ name: newPitchName })
+        
       });
 
       if (res.ok) {
@@ -147,9 +148,9 @@ const PitchManagement = () => {
       }
       // Delete the slot
       try {
-        await fetch(`/api/admin/pitches/${selectedPitch.id}/availability/${existingSlot.id}`, {
-          method: 'DELETE',
-          credentials: 'include'
+        await apiFetch(`/api/admin/pitches/${selectedPitch.id}/availability/${existingSlot.id}`, {
+          method: 'DELETE'
+          
         });
         toast.success('Slot removed');
         fetchPitches();
@@ -159,11 +160,11 @@ const PitchManagement = () => {
     } else {
       // Add new slot
       try {
-        await fetch(`/api/admin/pitches/${selectedPitch.id}/availability`, {
+        await apiFetch(`/api/admin/pitches/${selectedPitch.id}/availability`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date, slots: [time] }),
-          credentials: 'include'
+          body: JSON.stringify({ date, slots: [time] })
+          
         });
         toast.success('Slot added');
         fetchPitches();
@@ -177,9 +178,9 @@ const PitchManagement = () => {
     if (!selectedPitch) return;
 
     try {
-      const res = await fetch(`/api/admin/pitches/${selectedPitch.id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await apiFetch(`/api/admin/pitches/${selectedPitch.id}`, {
+        method: 'DELETE'
+        
       });
 
       if (res.ok) {
@@ -267,11 +268,11 @@ const PitchManagement = () => {
           dates.push(formatDate(d));
         }
 
-        const res = await fetch(`/api/admin/pitches/${selectedPitch.id}/availability/bulk`, {
+        const res = await apiFetch(`/api/admin/pitches/${selectedPitch.id}/availability/bulk`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dates, slots: bulkSlots }),
-          credentials: 'include'
+          body: JSON.stringify({ dates, slots: bulkSlots })
+          
         });
 
         if (res.ok) {
@@ -285,7 +286,7 @@ const PitchManagement = () => {
 
       } else {
         // CLEAR mode
-        const res = await fetch('/api/admin/pitches/availability/clear', {
+        const res = await apiFetch('/api/admin/pitches/availability/clear', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -293,8 +294,8 @@ const PitchManagement = () => {
             start_date: formatDate(firstDate),
             end_date: formatDate(endDate),
             day_of_week: pyDay
-          }),
-          credentials: 'include'
+          })
+          
         });
 
         if (res.ok) {

@@ -10,6 +10,7 @@ import { Plus, Handshake, Calendar, Clock, MapPin, User, Send, Trash2 } from 'lu
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 interface FriendlyPost {
   id: number;
@@ -32,7 +33,7 @@ const FriendlyMarket = () => {
 
   const fetchPosts = async () => {
     try {
-      const res = await fetch('/api/captain/friendlies', { credentials: 'include' });
+      const res = await apiFetch('/api/captain/friendlies');
       if (res.ok) {
         const data = await res.json();
         setPosts(data.posts || []);
@@ -57,10 +58,9 @@ const FriendlyMarket = () => {
     const notesInput = (form.querySelector('#notes') as HTMLInputElement).value;
 
     try {
-      const res = await fetch('/api/captain/friendlies', {
+      const res = await apiFetch('/api/captain/friendlies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           date: dateInput,
           time: timeInput,
@@ -84,9 +84,9 @@ const FriendlyMarket = () => {
 
   const handleDeletePost = async (postId: number) => {
     try {
-      const res = await fetch(`/api/captain/friendlies/${postId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await apiFetch(`/api/captain/friendlies/${postId}`, {
+        method: 'DELETE'
+        
       });
       if (res.ok) {
         toast.success('Post removed');
@@ -101,9 +101,9 @@ const FriendlyMarket = () => {
 
   const handleContactTeam = async (postId: number) => {
     try {
-      const res = await fetch(`/api/captain/friendlies/${postId}/contact`, {
-        method: 'POST',
-        credentials: 'include'
+      const res = await apiFetch(`/api/captain/friendlies/${postId}/contact`, {
+        method: 'POST'
+        
       });
       const data = await res.json();
       if (res.ok) {

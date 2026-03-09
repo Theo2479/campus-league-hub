@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { Loader2, Calendar, Clock, CheckCircle, Lock, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { apiFetch } from '@/lib/api';
 
 interface TimeSlot {
   date: string;
@@ -105,8 +106,8 @@ const RefereeAvailability = () => {
     setLoading(true);
     try {
       const [slotsRes, windowRes] = await Promise.all([
-        fetch('/api/fixtures/available', { credentials: 'include' }),
-        fetch('/api/admin/availability-window', { credentials: 'include' })
+        apiFetch('/api/fixtures/available'),
+        apiFetch('/api/admin/availability-window')
       ]);
 
       if (slotsRes.ok) {
@@ -135,7 +136,7 @@ const RefereeAvailability = () => {
       const endpoint = '/api/referee/availability';
       const method = isAdding ? 'POST' : 'DELETE';
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method: method,
         headers: {
           'Content-Type': 'application/json'
@@ -144,13 +145,13 @@ const RefereeAvailability = () => {
           date: slot.date,
           time: slot.time
         }),
-        credentials: 'include',
+        
       });
 
       if (response.ok) {
         toast.success(isAdding ? 'Marked as available' : 'Availability withdrawn');
         // Refresh
-        const slotsRes = await fetch('/api/fixtures/available', { credentials: 'include' });
+        const slotsRes = await apiFetch('/api/fixtures/available');
         if (slotsRes.ok) {
           const data = await slotsRes.json();
           setSlots(data.slots || []);

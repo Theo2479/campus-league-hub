@@ -8,8 +8,11 @@ from app.models import (
     Fixture, Team, Division, RefereeAvailability, League, Player,
     SystemSetting, Notification, User, Pitch, PitchAvailability
 )
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
+import logging
+
+logger = logging.getLogger(__name__)
 
 admin = Blueprint('admin', __name__)
 
@@ -235,6 +238,8 @@ def create_captain():
         phone=phone,
         role='captain'
     )
+    if not password or len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
     captain.set_password(password)
     
     db.session.add(captain)
@@ -293,6 +298,10 @@ def delete_captain(captain_id):
     # Remove captain from their team
     if captain.captain_of:
         captain.captain_of.captain_id = None
+        
+    # Delete friendly posts created by this captain
+    from app.models import FriendlyPost
+    FriendlyPost.query.filter_by(captain_id=captain_id).delete(synchronize_session=False)
     
     # Delete notifications
     Notification.query.filter_by(user_id=captain_id).delete()
@@ -528,7 +537,8 @@ def delete_pitch(pitch_id):
         return jsonify({'message': 'Pitch deleted'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error deleting pitch: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @admin.route('/admin/pitches/<int:pitch_id>/availability', methods=['POST'])
@@ -837,8 +847,8 @@ def delete_league(league_id):
         return jsonify({'message': 'League and associated items deleted'})
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting league: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error deleting league: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @admin.route('/admin/leagues/<int:league_id>/divisions', methods=['POST'])
@@ -913,8 +923,8 @@ def delete_division(division_id):
         return jsonify({'message': 'Division deleted'})
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting division: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error deleting division: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @admin.route('/admin/divisions/<int:division_id>/teams', methods=['POST'])
@@ -1007,7 +1017,7 @@ def get_division_overview(division_id):
         upcoming_fixtures = []
         past_fixtures = []
     else:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         upcoming = Fixture.query.filter(
             ((Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))),
@@ -1087,7 +1097,10 @@ def delete_team(team_id):
         return jsonify({'error': 'Team not found'}), 404
     
     try:
-        from app.models import PostponementRequest
+        from app.models import PostponementRequest, FriendlyPost
+        
+        # Delete any friendly posts by this team
+        FriendlyPost.query.filter_by(team_id=team_id).delete(synchronize_session=False)
         
         Player.query.filter_by(team_id=team_id).delete(synchronize_session='fetch')
         
@@ -1112,8 +1125,8 @@ def delete_team(team_id):
         return jsonify({'message': 'Team deleted'})
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting team: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error deleting team: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # =====================================
@@ -1200,7 +1213,7 @@ def update_fixture(fixture_id):
             if old_date and new_date.date() != old_date.date():
                 changes.append(('date', old_date.strftime('%Y-%m-%d'), new_date.strftime('%Y-%m-%d')))
             fixture.date = new_date
-        except:
+        except (ValueError, TypeError):
             pass
         
     if 'time' in data:
@@ -1410,6 +1423,8 @@ def emergency_cancel_day():
 def manage_availability_window():
     """Get or set the referee availability window."""
     if request.method == 'GET':
+        if current_user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
         start = SystemSetting.query.get('ref_window_start')
         end = SystemSetting.query.get('ref_window_end')
         is_open = SystemSetting.query.get('ref_window_open')
@@ -1507,6 +1522,10 @@ def reschedule_fixture(fixture_id):
 @login_required
 def reset_all_data():
     """Wipe all data except the current admin account."""
+    import os
+    if os.environ.get('FLASK_ENV') == 'production':
+        return jsonify({'error': 'Data reset is disabled in production'}), 403
+    
     if current_user.role != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     

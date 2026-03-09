@@ -6,6 +6,9 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import Fixture, Team, Division, League
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 fixtures = Blueprint('fixtures', __name__)
 
@@ -160,36 +163,61 @@ def submit_score(fixture_id):
     except (ValueError, KeyError):
         return jsonify({'error': 'Invalid scores'}), 400
         
+    old_home = fixture.home_score
+    old_away = fixture.away_score
+        
     fixture.home_score = home_score
     fixture.away_score = away_score
     fixture.status = 'completed'
     
-    if not was_completed:
-        # Update home team
-        home_team = Team.query.get(fixture.home_team_id)
-        home_team.played += 1
-        home_team.goals_for += home_score
-        home_team.goals_against += away_score
-        
-        # Update away team
-        away_team = Team.query.get(fixture.away_team_id)
-        away_team.played += 1
-        away_team.goals_for += away_score
-        away_team.goals_against += home_score
-        
-        if home_score > away_score:
-            home_team.won += 1
-            home_team.points += 3
-            away_team.lost += 1
-        elif away_score > home_score:
-            away_team.won += 1
-            away_team.points += 3
-            home_team.lost += 1
+    home_team = Team.query.get(fixture.home_team_id)
+    away_team = Team.query.get(fixture.away_team_id)
+    
+    if was_completed:
+        # Reverse old stats
+        home_team.goals_for -= old_home
+        home_team.goals_against -= old_away
+        away_team.goals_for -= old_away
+        away_team.goals_against -= old_home
+
+        if old_home > old_away:
+            home_team.won -= 1
+            home_team.points -= 3
+            away_team.lost -= 1
+        elif old_away > old_home:
+            away_team.won -= 1
+            away_team.points -= 3
+            home_team.lost -= 1
         else:
-            home_team.drawn += 1
-            home_team.points += 1
-            away_team.drawn += 1
-            away_team.points += 1
+            home_team.drawn -= 1
+            home_team.points -= 1
+            away_team.drawn -= 1
+            away_team.points -= 1
+
+        home_team.played -= 1
+        away_team.played -= 1
+        
+    # Apply new stats
+    home_team.played += 1
+    home_team.goals_for += home_score
+    home_team.goals_against += away_score
+    away_team.played += 1
+    away_team.goals_for += away_score
+    away_team.goals_against += home_score
+    
+    if home_score > away_score:
+        home_team.won += 1
+        home_team.points += 3
+        away_team.lost += 1
+    elif away_score > home_score:
+        away_team.won += 1
+        away_team.points += 3
+        home_team.lost += 1
+    else:
+        home_team.drawn += 1
+        home_team.points += 1
+        away_team.drawn += 1
+        away_team.points += 1
             
     db.session.commit()
     

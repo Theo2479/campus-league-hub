@@ -29,7 +29,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -39,8 +39,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { apiFetch } from '@/lib/api';
 
 // Mock data removed in favor of API
 
@@ -84,10 +85,10 @@ const ManageGames = () => {
     const fetchData = async () => {
       try {
         const [gamesRes, pitchesRes, refereesRes, teamsRes] = await Promise.all([
-          fetch('/api/fixtures', { credentials: 'include' }),
-          fetch('/api/admin/pitches', { credentials: 'include' }),
-          fetch('/api/admin/referees', { credentials: 'include' }),
-          fetch('/api/admin/teams', { credentials: 'include' })
+          apiFetch('/api/fixtures'),
+          apiFetch('/api/admin/pitches'),
+          apiFetch('/api/admin/referees'),
+          apiFetch('/api/admin/teams')
         ]);
 
         if (gamesRes.ok) {
@@ -191,24 +192,24 @@ const ManageGames = () => {
       status,
       homeScore: homeScore ? parseInt(homeScore) : undefined,
       awayScore: awayScore ? parseInt(awayScore) : undefined,
-      refereeId: refereeId || null,
+      refereeId: refereeId || null
     };
 
     try {
       let res;
       if (editingGame) {
-        res = await fetch(`/api/admin/fixtures/${editingGame.id}`, {
+        res = await apiFetch(`/api/admin/fixtures/${editingGame.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          credentials: 'include'
+          body: JSON.stringify(payload)
+          
         });
       } else {
-        res = await fetch('/api/admin/fixtures', {
+        res = await apiFetch('/api/admin/fixtures', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          credentials: 'include'
+          body: JSON.stringify(payload)
+          
         });
       }
 
@@ -239,9 +240,9 @@ const ManageGames = () => {
     if (!deleteGameId) return;
 
     try {
-      const res = await fetch(`/api/admin/fixtures/${deleteGameId}`, {
+      const res = await apiFetch(`/api/admin/fixtures/${deleteGameId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
       });
 
       if (res.ok) {

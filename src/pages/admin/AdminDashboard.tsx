@@ -9,6 +9,7 @@ import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { EmergencyCancelDialog } from '@/components/admin/EmergencyCancelDialog';
+import { apiFetch } from '@/lib/api';
 
 interface PostponementRequest {
   id: number;
@@ -35,10 +36,10 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         const [reqsRes, teamsRes, refsRes, gamesRes] = await Promise.all([
-          fetch('/api/admin/approvals', { credentials: 'include' }),
-          fetch('/api/admin/teams', { credentials: 'include' }),
-          fetch('/api/admin/referees', { credentials: 'include' }),
-          fetch('/api/fixtures', { credentials: 'include' }) // Assuming returns all games or I filter
+          apiFetch('/api/admin/approvals'),
+          apiFetch('/api/admin/teams'),
+          apiFetch('/api/admin/referees'),
+          apiFetch('/api/fixtures') // Assuming returns all games or I filter
         ]);
 
         if (reqsRes.ok) {
@@ -74,7 +75,7 @@ const AdminDashboard = () => {
 
   const handleApprove = async (id: number) => {
     try {
-      const res = await fetch(`/api/admin/approvals/${id}/approve`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/admin/approvals/${id}/approve`, { method: 'POST' });
       if (res.ok) {
         setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' } : r));
         toast.success('Request approved successfully');
@@ -86,7 +87,7 @@ const AdminDashboard = () => {
 
   const handleDeny = async (id: number) => {
     try {
-      const res = await fetch(`/api/admin/approvals/${id}/deny`, { method: 'POST', credentials: 'include' });
+      const res = await apiFetch(`/api/admin/approvals/${id}/deny`, { method: 'POST' });
       if (res.ok) {
         setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'denied' } : r));
         toast.success('Request denied');
@@ -99,7 +100,7 @@ const AdminDashboard = () => {
   const handleEmergencySuccess = (count: number, date: Date) => {
     setEmergencyTriggered(true);
     toast.error(`EMERGENCY CANCELLATION ACTIVE - ${count} games cancelled for ${format(date, 'MMM do')}.`, {
-      duration: 5000,
+      duration: 5000
     });
   };
 

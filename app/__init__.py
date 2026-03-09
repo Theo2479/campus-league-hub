@@ -1,15 +1,19 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from flask_migrate import Migrate
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
+import secrets
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 socketio = SocketIO()
 migrate = Migrate()
+limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
 
 def create_app():
     app = Flask(__name__)
@@ -50,6 +54,7 @@ def create_app():
 
     # Initialize extensions
     db.init_app(app)
+    limiter.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
@@ -98,6 +103,36 @@ def create_app():
     def internal_error(error):
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
+
+    # ----------------------------
+    # CSRF Protection (double-submit cookie)
+    # ----------------------------
+    @app.after_request
+    def set_csrf_cookie(response):
+        if 'csrf_token' not in request.cookies:
+            token = secrets.token_hex(32)
+            response.set_cookie(
+                'csrf_token', token,
+                httponly=False,  # JS must read this
+                samesite='Lax',
+                secure=is_production
+            )
+        return response
+
+    @app.before_request
+    def check_csrf():
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return
+        if request.path.startswith('/api/auth/login'):
+            return  # Login doesn't have a token yet
+        if request.path.startswith('/socket.io'):
+            return  # SocketIO uses its own auth
+        
+        token_cookie = request.cookies.get('csrf_token')
+        token_header = request.headers.get('X-CSRF-Token')
+        
+        if not token_cookie or token_cookie != token_header:
+            return jsonify({'error': 'CSRF validation failed'}), 403
 
     # ----------------------------
     # Serve frontend static files in production

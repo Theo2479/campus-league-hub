@@ -14,7 +14,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+    DialogTrigger
 } from '@/components/ui/dialog';
 import {
     AlertDialog,
@@ -24,8 +24,9 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { apiFetch } from '@/lib/api';
 
 interface Team {
     id: string;
@@ -46,7 +47,7 @@ const TeamManagement = () => {
 
     const fetchTeams = async () => {
         try {
-            const res = await fetch('/api/admin/teams', { credentials: 'include' });
+            const res = await apiFetch('/api/admin/teams');
             if (res.ok) {
                 const data = await res.json();
                 setTeams(data.teams.map((t: any) => ({
@@ -72,11 +73,11 @@ const TeamManagement = () => {
         }
 
         try {
-            const res = await fetch('/api/admin/teams', {
+            const res = await apiFetch('/api/admin/teams', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newTeamName }),
-                credentials: 'include'
+                body: JSON.stringify({ name: newTeamName })
+                
             });
 
             if (res.ok) {
@@ -102,9 +103,9 @@ const TeamManagement = () => {
         if (!deleteTeamId) return;
 
         try {
-            const res = await fetch(`/api/admin/teams/${deleteTeamId}`, {
-                method: 'DELETE',
-                credentials: 'include'
+            const res = await apiFetch(`/api/admin/teams/${deleteTeamId}`, {
+                method: 'DELETE'
+                
             });
 
             if (res.ok) {

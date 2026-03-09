@@ -19,7 +19,7 @@ import {
   X,
   MapPin,
   BarChart,
-  MessageSquare,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -64,13 +64,13 @@ const navItems: NavItem[] = [
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrator',
   referee: 'Referee',
-  captain: 'Team Captain',
+  captain: 'Team Captain'
 };
 
 const roleIcons: Record<UserRole, React.ComponentType<{ className?: string }>> = {
   admin: Shield,
   referee: Users,
-  captain: Trophy,
+  captain: Trophy
 };
 
 export const AppSidebar = () => {

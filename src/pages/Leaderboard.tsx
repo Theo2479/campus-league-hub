@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trophy, Medal, Percent } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from '@/lib/api';
 
 interface TeamStats {
     id: number;
@@ -38,8 +39,8 @@ const Leaderboard = () => {
         const fetchData = async () => {
             try {
                 const [lbRes, scorerRes] = await Promise.all([
-                    fetch("/api/leaderboard", { credentials: 'include' }),
-                    fetch("/api/top-scorers", { credentials: 'include' })
+                    apiFetch("/api/leaderboard"),
+                    apiFetch("/api/top-scorers")
                 ]);
 
                 if (lbRes.ok) {

@@ -28,7 +28,10 @@ def _enrich_user_data(user):
                 
     return user_data
 
+from app import limiter
+
 @auth.route('/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json()
     if not data:

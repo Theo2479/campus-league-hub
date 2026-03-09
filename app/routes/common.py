@@ -6,6 +6,9 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
 from app.models import Team, Notification, PostponementRequest, Player
+import logging
+
+logger = logging.getLogger(__name__)
 
 common = Blueprint('common', __name__)
 

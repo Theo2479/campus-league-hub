@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { apiFetch } from '@/lib/api';
 
 interface Standing {
     position: number;
@@ -67,9 +68,7 @@ const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) =
 
     const fetchOverview = useCallback(async () => {
         try {
-            const res = await fetch(`/api/admin/divisions/${divisionId}/overview`, {
-                credentials: 'include'
-            });
+            const res = await apiFetch(`/api/admin/divisions/${divisionId}/overview`);
 
             if (res.ok) {
                 const data = await res.json();
@@ -105,9 +104,7 @@ const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) =
         try {
             const today = new Date().toISOString().split('T')[0];
             const endDate = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 60 days ahead
-            const res = await fetch(`/api/admin/pitches/availability-summary?start_date=${today}&end_date=${endDate}`, {
-                credentials: 'include'
-            });
+            const res = await apiFetch(`/api/admin/pitches/availability-summary?start_date=${today}&end_date=${endDate}`);
             if (res.ok) {
                 const data = await res.json();
                 // Flatten the nested structure and add pitch_name
@@ -143,10 +140,9 @@ const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) =
 
         setRescheduleLoading(true);
         try {
-            const res = await fetch(`/api/admin/fixtures/${rescheduleFixture.id}/reschedule`, {
+            const res = await apiFetch(`/api/admin/fixtures/${rescheduleFixture.id}/reschedule`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({
                     date: slot.date,
                     time_slot: slot.time_slot,
