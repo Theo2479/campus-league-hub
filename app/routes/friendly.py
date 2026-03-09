@@ -27,8 +27,8 @@ def get_friendly_posts():
 @login_required
 def create_friendly_post():
     """Create a new friendly availability post."""
-    if current_user.role != 'captain':
-        return jsonify({'error': 'Only captains can post'}), 403
+    if current_user.role != 'captain' and current_user.role != 'admin':
+        return jsonify({'error': 'Only captains and admins can post'}), 403
     
     team = current_user.captain_of
     if not team:
@@ -36,7 +36,7 @@ def create_friendly_post():
     
     data = request.get_json()
     date_str = data.get('date')
-    time_str = data.get('time')
+    time_str = data.get('time',)
     venue = data.get('venue', 'Flexible')
     notes = data.get('notes', '')
     
