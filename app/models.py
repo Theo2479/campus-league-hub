@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(256))
     role = db.Column(db.String(20), nullable=False) # 'admin', 'referee', 'captain'
     name = db.Column(db.String(100))
     phone = db.Column(db.String(20))
