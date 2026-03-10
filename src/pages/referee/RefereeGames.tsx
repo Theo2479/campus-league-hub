@@ -66,7 +66,7 @@ const RefereeGames = () => {
     try {
       const res = await apiFetch(`/api/referee/games/${dropoutGameId}/dropout`, {
         method: 'POST'
-        
+
       });
 
       if (res.ok) {
@@ -85,7 +85,7 @@ const RefereeGames = () => {
   };
 
   const handleChat = (gameId: number) => {
-    toast.info('Opening team chat...');
+    toast.info('go to chats tab to see chats');
   };
 
   const openScoreDialog = (game: Game) => {
