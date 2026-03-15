@@ -46,14 +46,7 @@ import { apiFetch } from '@/lib/api';
 // Mock data removed in favor of API
 
 
-const mockVenues = [
-  'Main Stadium - Field A',
-  'Main Stadium - Field B',
-  'South Field',
-  'North Field',
-  'West Practice Field',
-  'Indoor Arena',
-];
+
 
 const ManageGames = () => {
   const [games, setGames] = useState<Game[]>([]);
@@ -80,63 +73,63 @@ const ManageGames = () => {
   // Form state additional
   const [refereeId, setRefereeId] = useState('');
 
+  const fetchData = async () => {
+    try {
+      const [gamesRes, pitchesRes, refereesRes, teamsRes] = await Promise.all([
+        apiFetch('/api/fixtures'),
+        apiFetch('/api/admin/pitches'),
+        apiFetch('/api/admin/referees'),
+        apiFetch('/api/admin/teams')
+      ]);
+
+      if (gamesRes.ok) {
+        const data = await gamesRes.json();
+        const mappedGames: Game[] = data.fixtures.map((f: any) => ({
+          id: f.id.toString(),
+          homeTeam: f.home_team,
+          awayTeam: f.away_team,
+          date: new Date(f.date),
+          time: f.time,
+          venue: f.venue,
+          status: f.status,
+          homeScore: f.home_score,
+          awayScore: f.away_score,
+          refereeId: f.ref_id ? f.ref_id.toString() : undefined
+        }));
+        setGames(mappedGames);
+      }
+
+      if (pitchesRes.ok) {
+        const data = await pitchesRes.json();
+        setPitches(data.pitches);
+      }
+
+      if (refereesRes.ok) {
+        const data = await refereesRes.json();
+        setReferees(data.referees.map((r: any) => ({
+          id: r.id.toString(),
+          name: r.name
+        })));
+      }
+
+      if (teamsRes.ok) {
+        const data = await teamsRes.json();
+        setAvailableTeams(data.teams.map((t: any) => ({
+          id: t.id ? t.id.toString() : '',
+          name: t.name
+        })));
+      }
+
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch games and pitches from API
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [gamesRes, pitchesRes, refereesRes, teamsRes] = await Promise.all([
-          apiFetch('/api/fixtures'),
-          apiFetch('/api/admin/pitches'),
-          apiFetch('/api/admin/referees'),
-          apiFetch('/api/admin/teams')
-        ]);
-
-        if (gamesRes.ok) {
-          const data = await gamesRes.json();
-          const mappedGames: Game[] = data.fixtures.map((f: any) => ({
-            id: f.id.toString(),
-            homeTeam: f.home_team,
-            awayTeam: f.away_team,
-            date: new Date(f.date),
-            time: f.time,
-            venue: f.venue,
-            status: f.status,
-            homeScore: f.home_score,
-            awayScore: f.away_score,
-            refereeId: f.ref_id ? f.ref_id.toString() : undefined
-          }));
-          setGames(mappedGames);
-        }
-
-        if (pitchesRes.ok) {
-          const data = await pitchesRes.json();
-          setPitches(data.pitches);
-        }
-
-        if (refereesRes.ok) {
-          const data = await refereesRes.json();
-          setReferees(data.referees.map((r: any) => ({
-            id: r.id.toString(),
-            name: r.name
-          })));
-        }
-
-        if (teamsRes.ok) {
-          const data = await teamsRes.json();
-          setAvailableTeams(data.teams.map((t: any) => ({
-            id: t.id ? t.id.toString() : '',
-            name: t.name
-          })));
-        }
-
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-        toast.error('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
@@ -217,12 +210,7 @@ const ManageGames = () => {
         toast.success(editingGame ? 'Game updated' : 'Game created');
         setIsDialogOpen(false);
         resetForm();
-        // Refetch games
-        // Ideally extract fetchGames to a function we can call again. 
-        // For now, reload page or hack trigger. 
-        // Better: update state yourself or re-trigger the useEffect (add dependency).
-        window.location.reload(); // Simple brute force for now to ensure state sync, or fix fetch
-        // Ideally: fetchGames(); 
+        fetchData();
       } else {
         toast.error("Failed to save game");
       }
@@ -247,7 +235,7 @@ const ManageGames = () => {
 
       if (res.ok) {
         toast.success('Game deleted');
-        window.location.reload();
+        fetchData();
       } else {
         toast.error('Failed to delete game');
       }

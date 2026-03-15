@@ -66,6 +66,7 @@ const AdminDashboard = () => {
 
       } catch (e) {
         console.error("Failed to fetch dashboard data", e);
+        toast.error('Failed to load dashboard data');
       }
     };
     fetchDashboardData();

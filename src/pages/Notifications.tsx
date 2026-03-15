@@ -70,12 +70,17 @@ const Notifications = () => {
 
   const markAsRead = async (id: number) => {
     try {
-      await apiFetch(`/api/notifications/${id}/read`, { method: 'POST' });
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, read: true } : n))
-      );
+      const res = await apiFetch(`/api/notifications/${id}/read`, { method: 'POST' });
+      if (res.ok) {
+        setNotifications(prev =>
+          prev.map(n => n.id === id ? { ...n, read: true } : n)
+        );
+      } else {
+        toast.error('Failed to mark as read');
+      }
     } catch (error) {
       console.error(error);
+      toast.error('Failed to mark as read');
     }
   };
 
@@ -101,7 +106,8 @@ const Notifications = () => {
       } else {
         toast.error('Failed to clear notifications');
       }
-    } catch {
+    } catch (error) {
+      console.error(error); // Added console.error for better debugging
       toast.error('Failed to clear notifications');
     } finally {
       setShowClearDialog(false);

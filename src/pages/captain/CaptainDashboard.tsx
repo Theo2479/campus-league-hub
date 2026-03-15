@@ -125,7 +125,9 @@ const CaptainDashboard = () => {
       }
       const standingsRes = await apiFetch('/api/captain/standings');
       if (standingsRes.ok) { setPosition((await standingsRes.json()).team_position); }
-    } catch (e) { /* silent */ }
+    } catch (e) {
+      toast.error('Failed to refresh data');
+    }
   };
 
   const getActionButton = (fixture: Fixture) => {

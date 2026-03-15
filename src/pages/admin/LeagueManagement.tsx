@@ -136,6 +136,7 @@ const LeagueManagement = () => {
       }
     } catch (e) {
       console.error("Failed to fetch teams");
+      toast.error("Failed to load teams");
     }
   };
 

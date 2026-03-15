@@ -53,6 +53,7 @@ const AdminAllocation = () => {
             }
         } catch (error) {
             console.error('Failed to fetch window status', error);
+            toast.error('Failed to load availability window status');
         } finally {
             setWindowLoading(false);
         }
