@@ -46,10 +46,10 @@ const Login = () => {
           <Trophy className="h-10 w-10 text-gold" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          University Intramural
+          Sporting Systems
         </h1>
         <p className="mt-2 text-xl font-medium text-gold">
-          Football League
+          League Management
         </p>
       </div>
 
