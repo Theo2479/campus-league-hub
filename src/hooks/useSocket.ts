@@ -16,6 +16,8 @@ export function useSocket(options: UseSocketOptions = { autoConnect: true }) {
         isConnected: false,
         roomsJoined: 0
     });
+    // Track when socket is ready so callbacks re-bind
+    const [socketReady, setSocketReady] = useState(false);
 
     useEffect(() => {
         if (!options.autoConnect) return;
@@ -31,6 +33,7 @@ export function useSocket(options: UseSocketOptions = { autoConnect: true }) {
 
         socket.on('connect', () => {
             console.log('[Socket] Connected');
+            setSocketReady(true);
         });
 
         socket.on('connected', (data: { user_id: number; rooms_joined: number }) => {
@@ -43,6 +46,7 @@ export function useSocket(options: UseSocketOptions = { autoConnect: true }) {
 
         socket.on('disconnect', () => {
             setState(prev => ({ ...prev, isConnected: false }));
+            setSocketReady(false);
             console.log('[Socket] Disconnected');
         });
 
@@ -53,19 +57,21 @@ export function useSocket(options: UseSocketOptions = { autoConnect: true }) {
         return () => {
             socket.disconnect();
             socketRef.current = null;
+            setSocketReady(false);
         };
     }, [options.autoConnect]);
 
+    // Include socketReady in deps so these re-bind once the socket is live
     const emit = useCallback((event: string, data?: unknown) => {
         socketRef.current?.emit(event, data);
-    }, []);
+    }, [socketReady]);
 
     const on = useCallback((event: string, callback: (...args: unknown[]) => void) => {
         socketRef.current?.on(event, callback);
         return () => {
             socketRef.current?.off(event, callback);
         };
-    }, []);
+    }, [socketReady]);
 
     const off = useCallback((event: string, callback?: (...args: unknown[]) => void) => {
         if (callback) {
@@ -73,7 +79,7 @@ export function useSocket(options: UseSocketOptions = { autoConnect: true }) {
         } else {
             socketRef.current?.off(event);
         }
-    }, []);
+    }, [socketReady]);
 
     const joinChannel = useCallback((channelId: number) => {
         emit('join_channel', { channel_id: channelId });

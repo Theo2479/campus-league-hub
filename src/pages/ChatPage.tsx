@@ -161,6 +161,15 @@ const ChatPage = () => {
         };
     }, [selectedChatId, joinChannel, leaveChannel, markRead]);
 
+    // Polling fallback when WebSocket is disconnected
+    useEffect(() => {
+        if (isConnected || !selectedChatId) return;
+        const interval = setInterval(() => {
+            fetchMessages(selectedChatId);
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [isConnected, selectedChatId]);
+
     // Scroll to bottom when messages change
     useEffect(() => {
         if (scrollRef.current) {

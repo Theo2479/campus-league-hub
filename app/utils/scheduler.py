@@ -18,7 +18,7 @@ class RoundRobinScheduler:
             games_per_week: Number of games per week (None or 0 = all games possible)
         """
         self.division = division
-        self.teams = list(division.teams)
+        self.teams = [td.team for td in division.teams]
         self.start_date = start_date
         self.games_per_week = games_per_week  # None means all games
         
@@ -186,7 +186,7 @@ class LeagueRoundRobinScheduler:
         max_weeks = 0
         
         for division in self.league.divisions:
-            teams = list(division.teams)
+            teams = [td.team for td in division.teams]
             if not teams or len(teams) < 2:
                 continue
                 
