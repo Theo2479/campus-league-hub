@@ -84,7 +84,7 @@ const Profile = () => {
                       : 'Team Captain Account'}
                 </p>
                 <p className="text-sm text-sidebar-foreground">
-                  Member since January 2024
+                  Accounts created by Theo for testing
                 </p>
               </div>
             </div>

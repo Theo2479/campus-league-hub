@@ -117,7 +117,7 @@ const PitchManagement = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newPitchName })
-        
+
       });
 
       if (res.ok) {
@@ -153,9 +153,9 @@ const PitchManagement = () => {
       try {
         await apiFetch(`/api/admin/pitches/${selectedPitch.id}/availability/${existingSlot.id}`, {
           method: 'DELETE'
-          
+
         });
-        toast.success('Slot removed');
+        toast.success('Slot removed_lol');
         fetchPitches();
       } catch (e) {
         toast.error('Failed to remove slot');
@@ -167,9 +167,9 @@ const PitchManagement = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date, slots: [time] })
-          
+
         });
-        toast.success('Slot added');
+        toast.success('Slot added_lol');
         fetchPitches();
       } catch (e) {
         toast.error('Failed to add slot');
@@ -183,7 +183,7 @@ const PitchManagement = () => {
     try {
       const res = await apiFetch(`/api/admin/pitches/${selectedPitch.id}`, {
         method: 'DELETE'
-        
+
       });
 
       if (res.ok) {
@@ -275,7 +275,7 @@ const PitchManagement = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dates, slots: bulkSlots })
-          
+
         });
 
         if (res.ok) {
@@ -298,7 +298,7 @@ const PitchManagement = () => {
             end_date: formatDate(endDate),
             day_of_week: pyDay
           })
-          
+
         });
 
         if (res.ok) {
