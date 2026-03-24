@@ -565,8 +565,8 @@ def update_pitch_availability(pitch_id):
     except ValueError:
         return jsonify({'error': 'Invalid date format'}), 400
          
-    # Clear existing availability for that date
-    PitchAvailability.query.filter_by(pitch_id=pitch_id, date=date_obj)
+    # this function is probably not needed
+    # PitchAvailability.query.filter_by(pitch_id=pitch_id, date=date_obj)
     
     # Add new slots
     if slots:
