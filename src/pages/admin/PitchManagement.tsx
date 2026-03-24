@@ -155,7 +155,7 @@ const PitchManagement = () => {
           method: 'DELETE'
 
         });
-        toast.success('Slot removed_lol');
+        toast.success('Slot removed');
         fetchPitches();
       } catch (e) {
         toast.error('Failed to remove slot');
@@ -169,7 +169,7 @@ const PitchManagement = () => {
           body: JSON.stringify({ date, slots: [time] })
 
         });
-        toast.success('Slot added_lol');
+        toast.success('Slot added');
         fetchPitches();
       } catch (e) {
         toast.error('Failed to add slot');
