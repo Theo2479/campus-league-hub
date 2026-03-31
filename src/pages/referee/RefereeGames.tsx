@@ -22,7 +22,8 @@ interface Game {
   status: string;
   home_score?: number;
   away_score?: number;
-  round_name?: string;
+  round_name?: string | null;
+  tournament_id?: number | null;
 }
 
 const RefereeGames = () => {
@@ -117,7 +118,9 @@ const RefereeGames = () => {
                       <span className="text-muted-foreground mx-2 font-normal">vs</span>
                       {game.away_team}
                     </CardTitle>
-                    <CardDescription> {game.round_name} </CardDescription>
+                    <CardDescription>
+                      {game.tournament_id ? (game.round_name ?? 'Tournament Match') : 'League Match'}
+                    </CardDescription>
                   </div>
                 </div>
                 {game.status === 'cancelled' ? (
