@@ -49,7 +49,7 @@ interface Fixture {
   round_name?: string | null;
 }
 
-interface standings {
+interface standingsRow {
   position: number;
   id: number;
   name: string;
@@ -70,7 +70,7 @@ const CaptainDashboard = () => {
   const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
   const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
   const [position, setPosition] = useState<number | null>(null);
-  const [standings, setStandings] = useState<standings[]>([]);
+  const [standings, setStandings] = useState<standingsRow[]>([]);
   const [divisionName, setDivisionName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
