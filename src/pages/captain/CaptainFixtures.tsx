@@ -25,6 +25,9 @@ interface Fixture {
   is_home: boolean;
   result?: 'win' | 'loss' | 'draw';
   referee?: string;
+  postponement_status?: string;
+  tournament_id?: number | null;
+  round_name?: string | null;
 }
 
 const CaptainFixtures = () => {
@@ -118,6 +121,9 @@ const CaptainFixtures = () => {
     }
   };
 
+  const getMatchLabel = (game: { tournament_id?: number | null; round_name?: string | null }) =>
+    game.tournament_id ? (game.round_name ?? 'Tournament Match') : 'League Match';
+
   const getActionButton = (fixture: Fixture) => {
     const fixtureDate = parseISO(fixture.date);
     const hoursUntil = differenceInHours(fixtureDate, new Date());
@@ -181,6 +187,9 @@ const CaptainFixtures = () => {
                     <span className="text-gold">{fixture.away_team}</span>
                   </>
                 )}
+              </p>
+              <p className="text-xs font-medium text-gold/80 uppercase tracking-wider">
+                {getMatchLabel(fixture)}
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">

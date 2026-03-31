@@ -45,6 +45,8 @@ interface Fixture {
   is_home: boolean;
   result?: 'win' | 'loss' | 'draw';
   referee?: string;
+  tournament_id?: number | null;
+  round_name?: string | null;
 }
 
 interface StandingRow {
@@ -112,6 +114,9 @@ const CaptainDashboard = () => {
 
     fetchData();
   }, []);
+
+  const getMatchLabel = (game: { tournament_id?: number | null; round_name?: string | null }) =>
+    game.tournament_id ? (game.round_name ?? 'Tournament Match') : 'League Match';
 
   const refetchData = async () => {
     try {
@@ -301,6 +306,9 @@ const CaptainDashboard = () => {
                                 <span className="text-gold">{fixture.away_team}</span>
                               </>
                             )}
+                          </p>
+                          <p className="text-xs font-medium text-gold/80 uppercase tracking-wider mt-0.5">
+                            {getMatchLabel(fixture)}
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
                             {format(parseISO(fixture.date), 'EEEE, MMMM d')} at {fixture.time}
