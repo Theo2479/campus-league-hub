@@ -443,9 +443,9 @@ const CaptainDashboard = () => {
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
                   <div className="text-6xl font-bold text-gold mb-2">
-                    {position ? `#${position}` : '-'}
+                    {position ? `#${position}` : 'test'}
                   </div>
-                  <p className="text-muted-foreground">No division standings available yet</p>
+                  <p className="text-muted-foreground">No division standings available yet test </p>
                 </div>
               </div>
             )}
