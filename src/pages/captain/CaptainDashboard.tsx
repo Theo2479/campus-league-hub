@@ -250,7 +250,7 @@ const CaptainDashboard = () => {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
           label="League Position"
-          value={position ? `#${position}` : '-'}
+          value={position ? `#${position}` : 'test'}
           icon={<Trophy className="h-6 w-6" />}
         />
         <StatCard
@@ -443,7 +443,7 @@ const CaptainDashboard = () => {
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
                   <div className="text-6xl font-bold text-gold mb-2">
-                    {position ? `#${position}` : 'test'}
+                    {position ? `#${position}` : '-'}
                   </div>
                   <p className="text-muted-foreground">No division standings available yet test </p>
                 </div>
