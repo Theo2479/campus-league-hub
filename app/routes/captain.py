@@ -4,7 +4,7 @@ Captain routes for team management and fixture operations.
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Fixture, Notification, PostponementRequest, User
+from app.models import Fixture, Notification, PostponementRequest, User, Team, TeamDivision
 from datetime import datetime, timezone
 import logging
 
