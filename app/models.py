@@ -146,8 +146,8 @@ class Team(db.Model):
         }
 
 class Tournament(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    id = db.Column(db.Integer, primary_key=True, nullable=True)
+    name = db.Column(db.String(100), nullable=True)
     format = db.Column(db.String(20), default='knockout')  # knockout
     status = db.Column(db.String(20), default='setup')      # setup, in_progress, completed
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
