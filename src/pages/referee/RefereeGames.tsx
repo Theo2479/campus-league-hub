@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Clock, MessageCircle, X, Trophy, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, MapPin, Clock, X, Trophy, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -84,10 +84,6 @@ const RefereeGames = () => {
     }
   };
 
-  const handleChat = (gameId: number) => {
-    toast.info('go to chats tab to see chats');
-  };
-
   const openScoreDialog = (game: Game) => {
     setSelectedGame(game);
     setIsScoreDialogOpen(true);
@@ -165,7 +161,7 @@ const RefereeGames = () => {
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-border">
-                {game.status === 'cancelled' ? (
+                {game.status === 'cancelled' && (
                   <Button
                     variant="ghost"
                     className="flex-1 text-muted-foreground cursor-not-allowed"
@@ -173,7 +169,9 @@ const RefereeGames = () => {
                   >
                     No Actions Available
                   </Button>
-                ) : game.status !== 'completed' ? (
+                )}
+
+                {game.status !== 'cancelled' && game.status !== 'completed' && (
                   <>
                     <Button
                       className="flex-1 bg-navy hover:bg-navy/90"
@@ -190,15 +188,6 @@ const RefereeGames = () => {
                       Drop Out
                     </Button>
                   </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => handleChat(game.id)}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    See Chat
-                  </Button>
                 )}
               </div>
             </CardContent>

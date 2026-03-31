@@ -72,7 +72,7 @@ const RefereeDashboard = () => {
     try {
       const res = await apiFetch(`/api/referee/games/${gameId}/pickup`, {
         method: 'POST'
-        
+
       });
 
       if (res.ok) {
@@ -101,7 +101,6 @@ const RefereeDashboard = () => {
           value={user?.games_reffed || 0}
           icon={<Trophy className="h-6 w-6" />}
         />
-        {/* Removed Reliability, Rating, and Earnings cards as requested */}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
