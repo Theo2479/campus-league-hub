@@ -116,7 +116,7 @@ const RefereeGames = () => {
                       <span className="text-muted-foreground mx-2 font-normal">vs</span>
                       {game.away_team}
                     </CardTitle>
-                    <CardDescription>League Match</CardDescription>
+                    <CardDescription>League Match testing 123</CardDescription>
                   </div>
                 </div>
                 {game.status === 'cancelled' ? (
