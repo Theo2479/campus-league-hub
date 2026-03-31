@@ -22,7 +22,7 @@ interface Game {
   status: string;
   home_score?: number;
   away_score?: number;
-  round?: string;
+  round_name?: string;
 }
 
 const RefereeGames = () => {
@@ -117,7 +117,7 @@ const RefereeGames = () => {
                       <span className="text-muted-foreground mx-2 font-normal">vs</span>
                       {game.away_team}
                     </CardTitle>
-                    <CardDescription> {game.round} </CardDescription>
+                    <CardDescription> {game.round_name} </CardDescription>
                   </div>
                 </div>
                 {game.status === 'cancelled' ? (
