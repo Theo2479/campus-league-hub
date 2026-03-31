@@ -390,10 +390,6 @@ const CaptainDashboard = () => {
                 {divisionName ? `${divisionName} standings` : team.division_name ? `${team.division_name} standings` : 'Division standings'}
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => window.location.href = '/captain/fixtures'}>
-              <ArrowRight className="h-4 w-4 mr-2" />
-              View Full Fixtures
-            </Button>
           </CardHeader>
           <CardContent>
             {standings.length > 0 ? (
