@@ -1981,17 +1981,27 @@ def advance_tournament_round(tid):
 @admin.route('/admin/tournaments/<int:tid>', methods=['DELETE'])
 @login_required
 def delete_tournament(tid):
-    """Delete a tournament and all its fixtures."""
+    """Delete a tournament and all its fixtures, including associated chats."""
     if current_user.role != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
 
     tournament = Tournament.query.get_or_404(tid)
+    from app.models import ChatChannel # import here as its not above ill fix this properly later. 
 
-    # Delete fixtures
-    Fixture.query.filter_by(tournament_id=tid).delete()
-    # Delete team assignments
+    # 1. Collect all fixture IDs for this tournament
+    fixture_ids = [f.id for f in tournament.fixtures.all()]
+
+    # 2. Delete all ChatChannels pointing to these fixtures
+    if fixture_ids:
+        ChatChannel.query.filter(ChatChannel.fixture_id.in_(fixture_ids)).delete(synchronize_session=False)
+
+    # 3. Delete all fixtures
+    Fixture.query.filter_by(tournament_id=tid).delete(synchronize_session=False)
+    
+    # 4. Delete team assignments
     db.session.execute(tournament_teams.delete().where(tournament_teams.c.tournament_id == tid))
-    # Delete tournament
+    
+    # 5. Finally delete the tournament
     db.session.delete(tournament)
     db.session.commit()
 
