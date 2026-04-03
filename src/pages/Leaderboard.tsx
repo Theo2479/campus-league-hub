@@ -6,21 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Trophy, Medal, Percent } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from '@/lib/api';
-
-interface TeamStats {
-    id: number;
-    name: string;
-    stats: {
-        played: number;
-        won: number;
-        drawn: number;
-        lost: number;
-        goals_for: number;
-        goals_against: number;
-        goal_difference: number;
-        points: number;
-    };
-}
+import type { LeaderboardTeam } from '@/types/api';
 
 interface TopScorer {
     id: number;
@@ -31,7 +17,7 @@ interface TopScorer {
 }
 
 const Leaderboard = () => {
-    const [leaderboard, setLeaderboard] = useState<TeamStats[]>([]);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardTeam[]>([]);
     const [scorers, setScorers] = useState<TopScorer[]>([]);
     const [loading, setLoading] = useState(true);
 

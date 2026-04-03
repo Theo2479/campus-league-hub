@@ -10,34 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { apiFetch } from '@/lib/api';
-
-interface Standing {
-    position: number;
-    id: number;
-    name: string;
-    played: number;
-    won: number;
-    drawn: number;
-    lost: number;
-    goals_for: number;
-    goals_against: number;
-    goal_difference: number;
-    points: number;
-}
-
-interface Fixture {
-    id: number;
-    home_team: string;
-    away_team: string;
-    date: string;
-    time: string;
-    venue: string;
-    status: string;
-    home_score: number | null;
-    away_score: number | null;
-    referee: string | null;
-    has_referee?: boolean;
-}
+import type { Fixture, StandingsRow } from '@/types/api';
 
 interface PitchSlot {
     id: number;
@@ -54,7 +27,7 @@ interface DivisionOverviewProps {
 
 const DivisionOverview = ({ divisionId, divisionName }: DivisionOverviewProps) => {
     const [loading, setLoading] = useState(true);
-    const [standings, setStandings] = useState<Standing[]>([]);
+    const [standings, setStandings] = useState<StandingsRow[]>([]);
     const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
     const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);

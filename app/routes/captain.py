@@ -4,7 +4,9 @@ Captain routes for team management and fixture operations.
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Fixture, Notification, PostponementRequest, User, Team, TeamDivision
+from app.models import Fixture, PostponementRequest, User, Team, TeamDivision
+from app.utils.decorators import require_role
+from app.utils.notifications import notify_user, notify_admins
 from datetime import datetime, timezone
 import logging
 
@@ -15,11 +17,9 @@ captain = Blueprint('captain', __name__)
 
 @captain.route('/captain/team', methods=['GET'])
 @login_required
+@require_role('captain')
 def get_captain_team():
     """Get the current captain's team data including division info."""
-    if current_user.role != 'captain':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     team = current_user.captain_of
     if not team:
         return jsonify({'error': 'No team assigned', 'team': None}), 200
@@ -62,11 +62,9 @@ def get_captain_team():
 
 @captain.route('/captain/fixtures', methods=['GET'])
 @login_required
+@require_role('captain')
 def get_captain_fixtures():
     """Get all fixtures for the captain's team."""
-    if current_user.role != 'captain':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     team = current_user.captain_of
     if not team:
         return jsonify({'upcoming': [], 'past': []})
@@ -124,11 +122,9 @@ def get_captain_fixtures():
 
 @captain.route('/captain/standings', methods=['GET'])
 @login_required
+@require_role('captain')
 def get_captain_standings():
     """Get division standings for the captain's team."""
-    if current_user.role != 'captain':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     team = current_user.captain_of
     if not team:
         return jsonify({'standings': [], 'division': None, 'team_position': None})
@@ -182,11 +178,9 @@ def get_captain_standings():
 
 @captain.route('/captain/fixtures/<int:id>/forfeit', methods=['POST'])
 @login_required
+@require_role('captain')
 def captain_forfeit_fixture(id):
     """Forfeit a fixture (3-0 loss + -3 point penalty)."""
-    if current_user.role != 'captain':
-        return jsonify({'error': 'Unauthorized'}), 403
-        
     fixture = Fixture.query.get_or_404(id)
     team = current_user.captain_of
     
@@ -227,32 +221,29 @@ def captain_forfeit_fixture(id):
             winning_td.points += 3
     
     # Notify admin
-    admins = User.query.filter_by(role='admin').all()
-    for admin in admins:
-        db.session.add(Notification(
-            user_id=admin.id,
-            title="Fixture Forfeited",
-            message=f"{team.name} forfeited match vs {winning_team.name}. -3 points penalty applied.",
-            type='urgent'
-        ))
-        
+    notify_admins(
+        "Fixture Forfeited",
+        f"{team.name} forfeited match vs {winning_team.name}. -3 points penalty applied.",
+        'urgent'
+    )
+
     # Notify referee
     if fixture.ref_id:
-        db.session.add(Notification(
-            user_id=fixture.ref_id,
-            title="Match Forfeited",
-            message=f"Match {fixture.home_team.name} vs {fixture.away_team.name} was forfeited by {team.name}. No attendance required.",
-            type='info'
-        ))
-    
+        notify_user(
+            fixture.ref_id,
+            "Match Forfeited",
+            f"Match {fixture.home_team.name} vs {fixture.away_team.name} was forfeited by {team.name}. No attendance required.",
+            'info'
+        )
+
     # Notify opposing captain
     if winning_team.captain_id:
-        db.session.add(Notification(
-            user_id=winning_team.captain_id,
-            title="Opponent Forfeited",
-            message=f"Your match vs {team.name} was forfeited. You win 3-0.",
-            type='success'
-        ))
+        notify_user(
+            winning_team.captain_id,
+            "Opponent Forfeited",
+            f"Your match vs {team.name} was forfeited. You win 3-0.",
+            'success'
+        )
         
     db.session.commit()
     return jsonify({'message': 'Match forfeited. -3 point penalty applied.'})
@@ -260,11 +251,9 @@ def captain_forfeit_fixture(id):
 
 @captain.route('/captain/fixtures/<int:id>/postpone', methods=['POST'])
 @login_required
+@require_role('captain')
 def request_postponement(id):
     """Request postponement for a fixture."""
-    if current_user.role != 'captain':
-        return jsonify({'error': 'Unauthorized'}), 403
-        
     fixture = Fixture.query.get_or_404(id)
     team = current_user.captain_of
     
@@ -284,15 +273,12 @@ def request_postponement(id):
     db.session.add(req)
     
     # Notify admin
-    admins = User.query.filter_by(role='admin').all()
     opponent = fixture.away_team.name if fixture.home_team_id == team.id else fixture.home_team.name
-    for admin in admins:
-        db.session.add(Notification(
-            user_id=admin.id,
-            title="Postponement Request",
-            message=f"{team.name} requested postponement for match vs {opponent}",
-            type='info'
-        ))
+    notify_admins(
+        "Postponement Request",
+        f"{team.name} requested postponement for match vs {opponent}",
+        'info'
+    )
         
     db.session.commit()
     return jsonify({'message': 'Request submitted'})

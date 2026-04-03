@@ -35,7 +35,7 @@ def verify_scheduling():
         # 4. Get Division (assuming seeded)
         div = Division.query.first()
         if not div:
-            print("ERROR: No division found. Run seed_db.py first.")
+            print("ERROR: No division found. Run scripts/seed_db.py first.")
             return
 
         print(f"Using Division: {div.name} with {div.teams.count()} teams")
