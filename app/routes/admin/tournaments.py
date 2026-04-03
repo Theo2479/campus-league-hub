@@ -250,14 +250,24 @@ def advance_tournament_round(tid):
     except ValueError:
         return jsonify({'error': 'Invalid date format'}), 400
 
-    current_fixtures = Fixture.query.filter_by(
-        tournament_id=tid, status='completed'
-    ).order_by(Fixture.match_order).all()
+    current_round_name = data.get('currentRound')
+    if not current_round_name:
+        all_rounds = ['Round of 64', 'Round of 32', 'Round of 16', 'Quarter-Final', 'Semi-Final', 'Final']
+        if next_round_name in all_rounds:
+            idx = all_rounds.index(next_round_name)
+            if idx > 0:
+                current_round_name = all_rounds[idx - 1]
+        else:
+            latest_f = Fixture.query.filter_by(tournament_id=tid).order_by(Fixture.id.desc()).first()
+            if latest_f:
+                current_round_name = latest_f.round_name
+                
+    if not current_round_name:
+        return jsonify({'error': 'Could not determine current round to advance from'}), 400
 
-    existing_rounds = set()
-    for f in tournament.fixtures.all():
-        if f.round_name:
-            existing_rounds.add(f.round_name)
+    current_fixtures = Fixture.query.filter_by(
+        tournament_id=tid, status='completed', round_name=current_round_name
+    ).order_by(Fixture.match_order).all()
 
     existing_next = Fixture.query.filter_by(tournament_id=tid, round_name=next_round_name).count()
     if existing_next > 0:
@@ -265,8 +275,6 @@ def advance_tournament_round(tid):
 
     winners = []
     for f in current_fixtures:
-        if f.round_name not in existing_rounds:
-            continue
         if f.home_score is not None and f.away_score is not None:
             if f.home_score > f.away_score:
                 winners.append(f.home_team_id)
