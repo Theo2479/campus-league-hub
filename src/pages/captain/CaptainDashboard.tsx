@@ -12,57 +12,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { apiFetch } from '@/lib/api';
-
-interface TeamStats {
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  points: number;
-  goals_for: number;
-  goals_against: number;
-  goal_difference: number;
-}
-
-interface TeamData {
-  id: number;
-  name: string;
-  division_name?: string;
-  league_name?: string;
-  stats: TeamStats;
-}
-
-interface Fixture {
-  id: number;
-  home_team: string;
-  away_team: string;
-  date: string;
-  time: string;
-  venue: string;
-  status: string;
-  home_score: number | null;
-  away_score: number | null;
-  is_home: boolean;
-  result?: 'win' | 'loss' | 'draw';
-  referee?: string;
-  tournament_id?: number | null;
-  round_name?: string | null;
-}
-
-interface standingsRow {
-  position: number;
-  id: number;
-  name: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goals_for: number;
-  goals_against: number;
-  goal_difference: number;
-  points: number;
-  is_my_team: boolean;
-}
+import type { Fixture, TeamData, StandingsRow } from '@/types/api';
 
 const CaptainDashboard = () => {
   const { user } = useAuth();
@@ -70,7 +20,7 @@ const CaptainDashboard = () => {
   const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
   const [pastFixtures, setPastFixtures] = useState<Fixture[]>([]);
   const [position, setPosition] = useState<number | null>(null);
-  const [standings, setStandings] = useState<standingsRow[]>([]);
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [divisionName, setDivisionName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 

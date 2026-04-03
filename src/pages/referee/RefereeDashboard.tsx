@@ -8,33 +8,17 @@ import { Trophy, Calendar, MessageCircle, Clock, CheckCircle, ArrowRight, Lock, 
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { MatchScoreModal } from '@/components/referee/MatchScoreModal';
+import { ScoreSubmissionDialog } from '@/components/referee/ScoreSubmissionDialog';
 import { Link } from 'react-router-dom';
 import { RecentChatsWidget } from '@/components/shared/RecentChatsWidget';
-
-// Interface matching the API response
-interface APIFixture {
-  id: number;
-  home_team: string; // string
-  away_team: string;
-  date: string;
-  time: string;
-  venue: string;
-  status: string;
-  referee?: string;
-  home_score?: number;
-  away_score?: number;
-}
-
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
-
-// ... (previous imports)
+import type { Fixture } from '@/types/api';
 
 const RefereeDashboard = () => {
   const { user } = useAuth();
-  const [upcomingGames, setUpcomingGames] = useState<APIFixture[]>([]);
-  const [openGames, setOpenGames] = useState<APIFixture[]>([]);
+  const [upcomingGames, setUpcomingGames] = useState<Fixture[]>([]);
+  const [openGames, setOpenGames] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
   const [isWindowOpen, setIsWindowOpen] = useState(false);
 
@@ -245,9 +229,12 @@ const RefereeDashboard = () => {
                           </div>
                         ) : (
                           <>
-                            <MatchScoreModal
-                              fixture={game}
-                              onScoreSubmitted={fetchData}
+                            <ScoreSubmissionDialog
+                              gameId={game.id}
+                              homeTeamName={game.home_team}
+                              awayTeamName={game.away_team}
+                              onSuccess={fetchData}
+                              trigger={<Button variant="outline" size="sm">Enter Score</Button>}
                             />
                             <Button size="sm" variant="outline">
                               <MessageCircle className="h-4 w-4" />

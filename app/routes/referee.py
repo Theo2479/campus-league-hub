@@ -5,9 +5,11 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
 from app.models import (
-    Fixture, RefereeAvailability, SystemSetting, Notification, 
-    User, ChatChannel, ChatParticipant, ChatMessage
+    Fixture, RefereeAvailability, SystemSetting, User,
+    ChatChannel, ChatParticipant, ChatMessage
 )
+from app.utils.decorators import require_role
+from app.utils.notifications import notify_user, notify_admins
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import logging
@@ -19,11 +21,9 @@ referee = Blueprint('referee', __name__)
 
 @referee.route('/fixtures/available', methods=['GET'])
 @login_required
+@require_role('referee')
 def get_available_fixtures():
     """Get available time slots for referees to sign up, filtered by Admin Window."""
-    if current_user.role != 'referee':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     # Get window settings
     w_start = SystemSetting.query.get('ref_window_start')
     w_end = SystemSetting.query.get('ref_window_end')
@@ -105,11 +105,9 @@ def get_available_fixtures():
 
 @referee.route('/referee/availability', methods=['POST'])
 @login_required
+@require_role('referee')
 def add_availability():
     """Allow a referee to express availability for a slot."""
-    if current_user.role != 'referee':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     data = request.get_json()
     date_str = data.get('date')
     time_slot = data.get('time')
@@ -145,11 +143,9 @@ def add_availability():
 
 @referee.route('/referee/availability', methods=['DELETE'])
 @login_required
+@require_role('referee')
 def remove_availability():
     """Allow a referee to withdraw availability."""
-    if current_user.role != 'referee':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     data = request.get_json()
     date_str = data.get('date')
     time_slot = data.get('time')
@@ -179,11 +175,9 @@ def remove_availability():
 
 @referee.route('/referee/my-games', methods=['GET'])
 @login_required
+@require_role('referee')
 def get_my_games():
     """Get all fixtures the current referee is assigned to, AND dropped games available for pickup."""
-    if current_user.role != 'referee':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     # Assigned games
     assigned = Fixture.query.filter(
         Fixture.ref_id == current_user.id
@@ -205,11 +199,9 @@ def get_my_games():
 
 @referee.route('/referee/games/<int:game_id>/dropout', methods=['POST'])
 @login_required
+@require_role('referee')
 def dropout_game(game_id):
     """Ref drops out of a game. Notifications sent to everyone."""
-    if current_user.role != 'referee':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     fixture = Fixture.query.get(game_id)
     if not fixture:
         return jsonify({'error': 'Game not found'}), 404
@@ -222,45 +214,42 @@ def dropout_game(game_id):
     fixture.ref_dropped = True  # Flag for open games list
     db.session.add(fixture)
     
-    # Notify admin
-    admin = User.query.filter_by(role='admin').first()
-    if admin:
-        db.session.add(Notification(
-            user_id=admin.id,
-            title="Referee Usage Alert: Dropout",
-            message=f"Referee {current_user.name} dropped out of {fixture.home_team.name} vs {fixture.away_team.name} on {fixture.date.strftime('%Y-%m-%d')}.",
-            type='urgent'
-        ))
-        
+    # Notify all admins (fixes bug: was only notifying first admin)
+    notify_admins(
+        "Referee Usage Alert: Dropout",
+        f"Referee {current_user.name} dropped out of {fixture.home_team.name} vs {fixture.away_team.name} on {fixture.date.strftime('%Y-%m-%d')}.",
+        'urgent'
+    )
+
     # Notify captains
     home_team = fixture.home_team
     away_team = fixture.away_team
-    
+
     if home_team.captain_id:
-        db.session.add(Notification(
-            user_id=home_team.captain_id,
-            title="Referee Update",
-            message=f"The referee for your game vs {away_team.name} has dropped out. We are looking for a replacement.",
-            type='urgent'
-        ))
-        
+        notify_user(
+            home_team.captain_id,
+            "Referee Update",
+            f"The referee for your game vs {away_team.name} has dropped out. We are looking for a replacement.",
+            'urgent'
+        )
+
     if away_team.captain_id:
-        db.session.add(Notification(
-            user_id=away_team.captain_id,
-            title="Referee Update",
-            message=f"The referee for your game vs {home_team.name} has dropped out. We are looking for a replacement.",
-            type='urgent'
-        ))
-        
+        notify_user(
+            away_team.captain_id,
+            "Referee Update",
+            f"The referee for your game vs {home_team.name} has dropped out. We are looking for a replacement.",
+            'urgent'
+        )
+
     # Notify all other referees
     other_refs = User.query.filter(User.role == 'referee', User.id != current_user.id).all()
     for ref in other_refs:
-        db.session.add(Notification(
-            user_id=ref.id,
-            title="Urgent Coverage Needed",
-            message=f"A game has become available! {fixture.home_team.name} vs {fixture.away_team.name} on {fixture.date.strftime('%Y-%m-%d %H:%M')}. First to claim gets it.",
-            type='info'
-        ))
+        notify_user(
+            ref.id,
+            "Urgent Coverage Needed",
+            f"A game has become available! {fixture.home_team.name} vs {fixture.away_team.name} on {fixture.date.strftime('%Y-%m-%d %H:%M')}. First to claim gets it.",
+            'info'
+        )
         
     # Chat cleanup: Remove ref from chat
     chat = ChatChannel.query.filter_by(fixture_id=fixture.id, type='game').first()
@@ -281,11 +270,9 @@ def dropout_game(game_id):
 
 @referee.route('/referee/games/<int:game_id>/pickup', methods=['POST'])
 @login_required
+@require_role('referee')
 def pickup_game(game_id):
     """Ref picks up an open game (First Come First Served)."""
-    if current_user.role != 'referee':
-        return jsonify({'error': 'Unauthorized'}), 403
-        
     fixture = Fixture.query.get(game_id)
     if not fixture:
         return jsonify({'error': 'Game not found'}), 404
@@ -298,35 +285,32 @@ def pickup_game(game_id):
     fixture.ref_dropped = False  # Clear the flag
     db.session.add(fixture)
     
-    # Notify admin
-    admin = User.query.filter_by(role='admin').first()
-    if admin:
-        db.session.add(Notification(
-            user_id=admin.id,
-            title="Referee Coverage Found",
-            message=f"Referee {current_user.name} picked up {fixture.home_team.name} vs {fixture.away_team.name}.",
-            type='success'
-        ))
-        
+    # Notify all admins (fixes bug: was only notifying first admin)
+    notify_admins(
+        "Referee Coverage Found",
+        f"Referee {current_user.name} picked up {fixture.home_team.name} vs {fixture.away_team.name}.",
+        'success'
+    )
+
     # Notify captains
     home_team = fixture.home_team
     away_team = fixture.away_team
-    
+
     if home_team.captain_id:
-        db.session.add(Notification(
-            user_id=home_team.captain_id,
-            title="Referee Assigned",
-            message=f"A new referee ({current_user.name}) has been assigned to your game vs {away_team.name}.",
-            type='success'
-        ))
-        
+        notify_user(
+            home_team.captain_id,
+            "Referee Assigned",
+            f"A new referee ({current_user.name}) has been assigned to your game vs {away_team.name}.",
+            'success'
+        )
+
     if away_team.captain_id:
-        db.session.add(Notification(
-            user_id=away_team.captain_id,
-            title="Referee Assigned",
-            message=f"A new referee ({current_user.name}) has been assigned to your game vs {home_team.name}.",
-            type='success'
-        ))
+        notify_user(
+            away_team.captain_id,
+            "Referee Assigned",
+            f"A new referee ({current_user.name}) has been assigned to your game vs {home_team.name}.",
+            'success'
+        )
         
     # Commit the fixture assignment first
     db.session.commit()
