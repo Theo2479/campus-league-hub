@@ -52,4 +52,6 @@ def reset_all_data():
         return jsonify({'message': 'All data has been reset. Only your admin account remains.'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Reset failed: {str(e)}'}), 500
+        import logging
+        logging.getLogger(__name__).error(f"Reset failed: {e}")
+        return jsonify({'error': 'Reset failed due to an internal error'}), 500

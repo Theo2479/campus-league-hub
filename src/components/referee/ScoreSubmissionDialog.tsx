@@ -5,7 +5,8 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
+    DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +15,13 @@ import { toast } from "sonner";
 import { apiFetch } from '@/lib/api';
 
 interface ScoreSubmissionDialogProps {
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
+    isOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
     gameId: number;
     homeTeamName: string;
     awayTeamName: string;
     onSuccess: () => void;
+    trigger?: React.ReactNode;
 }
 
 export function ScoreSubmissionDialog({
@@ -28,14 +30,24 @@ export function ScoreSubmissionDialog({
     gameId,
     homeTeamName,
     awayTeamName,
-    onSuccess
+    onSuccess,
+    trigger
 }: ScoreSubmissionDialogProps) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const controlled = isOpen !== undefined && onOpenChange !== undefined;
+    const open = controlled ? isOpen : internalOpen;
+    const setOpen = controlled ? onOpenChange : setInternalOpen;
+
     const [homeScore, setHomeScore] = useState("");
     const [awayScore, setAwayScore] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (homeScore === '' || awayScore === '') {
+            toast.error('Please enter both scores');
+            return;
+        }
         setIsSubmitting(true);
 
         try {
@@ -56,7 +68,7 @@ export function ScoreSubmissionDialog({
 
             toast.success("Score submitted successfully");
             onSuccess();
-            onOpenChange(false);
+            setOpen(false);
         } catch (error) {
             toast.error("Error submitting score");
             console.error(error);
@@ -66,7 +78,8 @@ export function ScoreSubmissionDialog({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={setOpen}>
+            {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Submit Match Result</DialogTitle>
@@ -104,7 +117,7 @@ export function ScoreSubmissionDialog({
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isSubmitting}>

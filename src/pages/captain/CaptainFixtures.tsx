@@ -11,24 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { apiFetch } from '@/lib/api';
-
-interface Fixture {
-  id: number;
-  home_team: string;
-  away_team: string;
-  date: string;
-  time: string;
-  venue: string;
-  status: string;
-  home_score: number | null;
-  away_score: number | null;
-  is_home: boolean;
-  result?: 'win' | 'loss' | 'draw';
-  referee?: string;
-  postponement_status?: string;
-  tournament_id?: number | null;
-  round_name?: string | null;
-}
+import type { Fixture } from '@/types/api';
 
 const CaptainFixtures = () => {
   const { user } = useAuth();
