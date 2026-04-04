@@ -16,6 +16,10 @@ interface Game {
   status: 'scheduled' | 'completed' | 'cancelled' | 'in-progress' | 'postponed';
   homeScore?: number;
   awayScore?: number;
+  tournamentId?: string;
+  roundName?: string;
+  homePens?: number;
+  awayPens?: number;
   refereeId?: string;
 }
 import { Plus, Calendar, Trophy, MapPin, Clock, Edit2, Trash2, Loader2 } from 'lucide-react';
@@ -46,8 +50,6 @@ import { apiFetch } from '@/lib/api';
 // Mock data removed in favor of API
 
 
-
-
 const ManageGames = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,8 @@ const ManageGames = () => {
   const [status, setStatus] = useState<Game['status']>('scheduled');
   const [homeScore, setHomeScore] = useState('');
   const [awayScore, setAwayScore] = useState('');
+  const [homePens, setHomePens] = useState('');
+  const [awayPens, setAwayPens] = useState('');
 
   const [pitches, setPitches] = useState<{ id: number, name: string }[]>([]);
   const [referees, setReferees] = useState<{ id: string, name: string }[]>([]);
@@ -94,6 +98,10 @@ const ManageGames = () => {
           status: f.status,
           homeScore: f.home_score,
           awayScore: f.away_score,
+          homePens: f.home_pens,
+          awayPens: f.away_pens,
+          tournamentId: f.tournament_id,
+          roundName: f.round_name,
           refereeId: f.ref_id ? f.ref_id.toString() : undefined
         }));
         setGames(mappedGames);
@@ -142,6 +150,8 @@ const ManageGames = () => {
     setStatus('scheduled');
     setHomeScore('');
     setAwayScore('');
+    setHomePens('');
+    setAwayPens('');
     setRefereeId('');
     setEditingGame(null);
   };
@@ -161,6 +171,8 @@ const ManageGames = () => {
     setStatus(game.status);
     setHomeScore(game.homeScore?.toString() || '');
     setAwayScore(game.awayScore?.toString() || '');
+    setHomePens(game.homePens?.toString() || '');
+    setAwayPens(game.awayPens?.toString() || '');
     setRefereeId(game.refereeId || '');
     setIsDialogOpen(true);
   };
@@ -185,6 +197,8 @@ const ManageGames = () => {
       status,
       homeScore: homeScore ? parseInt(homeScore) : undefined,
       awayScore: awayScore ? parseInt(awayScore) : undefined,
+      homePens: homePens ? parseInt(homePens) : undefined,
+      awayPens: awayPens ? parseInt(awayPens) : undefined,
       refereeId: refereeId || null
     };
 
@@ -195,14 +209,14 @@ const ManageGames = () => {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-          
+
         });
       } else {
         res = await apiFetch('/api/admin/fixtures', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-          
+
         });
       }
 
@@ -230,7 +244,7 @@ const ManageGames = () => {
     try {
       const res = await apiFetch(`/api/admin/fixtures/${deleteGameId}`, {
         method: 'DELETE',
-        
+
       });
 
       if (res.ok) {
@@ -400,29 +414,58 @@ const ManageGames = () => {
               </div>
 
               {status === 'completed' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="homeScore">Home Score</Label>
-                    <Input
-                      id="homeScore"
-                      type="number"
-                      min="0"
-                      value={homeScore}
-                      onChange={(e) => setHomeScore(e.target.value)}
-                      placeholder="0"
-                    />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="homeScore">Home Score</Label>
+                      <Input
+                        id="homeScore"
+                        type="number"
+                        min="0"
+                        value={homeScore}
+                        onChange={(e) => setHomeScore(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="awayScore">Away Score</Label>
+                      <Input
+                        id="awayScore"
+                        type="number"
+                        min="0"
+                        value={awayScore}
+                        onChange={(e) => setAwayScore(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="awayScore">Away Score</Label>
-                    <Input
-                      id="awayScore"
-                      type="number"
-                      min="0"
-                      value={awayScore}
-                      onChange={(e) => setAwayScore(e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
+
+                  {editingGame?.tournamentId && homeScore !== '' && awayScore !== '' && homeScore === awayScore && (
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border mt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="homePens">Home Pens</Label>
+                        <Input
+                          id="homePens"
+                          type="number"
+                          min="0"
+                          value={homePens}
+                          onChange={(e) => setHomePens(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="awayPens">Away Pens</Label>
+                        <Input
+                          id="awayPens"
+                          type="number"
+                          min="0"
+                          value={awayPens}
+                          onChange={(e) => setAwayPens(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -525,7 +568,8 @@ const ManageGames = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <Trophy className="h-4 w-4 text-gold" />
                           <span className="font-semibold text-foreground">
-                            {game.homeTeam} {game.homeScore} - {game.awayScore} {game.awayTeam}
+                            {game.homeTeam} {game.homeScore} - {game.awayScore} {game.awayTeam} 
+                            {game.homePens !== null && game.homePens !== undefined && ` (${game.homePens}-${game.awayPens} pens)`}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">

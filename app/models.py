@@ -189,6 +189,8 @@ class Fixture(db.Model):
     
     home_score = db.Column(db.Integer, nullable=True)
     away_score = db.Column(db.Integer, nullable=True)
+    home_pens = db.Column(db.Integer, nullable=True)
+    away_pens = db.Column(db.Integer, nullable=True)
 
     # Relationships
     home_team = db.relationship('Team', foreign_keys=[home_team_id], backref='home_matches')
@@ -207,12 +209,15 @@ class Fixture(db.Model):
             'status': self.status,
             'home_score': self.home_score,
             'away_score': self.away_score,
+            'home_pens': self.home_pens,
+            'away_pens': self.away_pens,
             'referee': self.referee.name if self.referee else None,
             'ref_id': self.ref_id,
             'tournament_id': self.tournament_id,
             'round_name': self.round_name,
             'match_order': self.match_order,
             'is_bye': self.away_team_id == self.home_team_id if self.home_team_id and self.away_team_id else False
+            
         }
 
 class RefereeAvailability(db.Model):

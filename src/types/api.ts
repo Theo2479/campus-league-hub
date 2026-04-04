@@ -15,6 +15,8 @@ export interface Fixture {
   status: string;
   home_score: number | null;
   away_score: number | null;
+  home_pens: number | null;
+  away_pens: number | null;
   referee?: string | null;
   ref_id?: number | null;
   has_referee?: boolean;

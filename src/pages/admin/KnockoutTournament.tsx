@@ -35,6 +35,8 @@ interface TournamentFixture {
     status: string;
     home_score: number | null;
     away_score: number | null;
+    home_pens?: number | null;
+    away_pens?: number | null;
     round_name: string;
     match_order: number;
 }
@@ -367,18 +369,28 @@ const KnockoutTournament = () => {
                                                                             <div className="text-center flex-1">
                                                                                 <p className="font-semibold text-sm">{fixture.home_team}</p>
                                                                                 {fixture.status === 'completed' && (
-                                                                                    <p className={`text-2xl font-bold mt-1 ${(fixture.home_score ?? 0) > (fixture.away_score ?? 0) ? 'text-gold' : 'text-muted-foreground'}`}>
-                                                                                        {fixture.home_score}
-                                                                                    </p>
+                                                                                    <div className="mt-1 flex flex-col items-center">
+                                                                                        <p className={`text-2xl font-bold ${((fixture.home_score ?? 0) > (fixture.away_score ?? 0) || ((fixture.home_score === fixture.away_score) && (fixture.home_pens ?? 0) > (fixture.away_pens ?? 0))) ? 'text-gold' : 'text-muted-foreground'}`}>
+                                                                                            {fixture.home_score}
+                                                                                        </p>
+                                                                                        {fixture.home_pens !== null && fixture.home_pens !== undefined && (
+                                                                                            <p className="text-xs text-muted-foreground opacity-80 mt-0.5">({fixture.home_pens} pens)</p>
+                                                                                        )}
+                                                                                    </div>
                                                                                 )}
                                                                             </div>
                                                                             <span className="text-muted-foreground font-bold mx-3">vs</span>
                                                                             <div className="text-center flex-1">
                                                                                 <p className="font-semibold text-sm">{fixture.away_team}</p>
                                                                                 {fixture.status === 'completed' && (
-                                                                                    <p className={`text-2xl font-bold mt-1 ${(fixture.away_score ?? 0) > (fixture.home_score ?? 0) ? 'text-gold' : 'text-muted-foreground'}`}>
-                                                                                        {fixture.away_score}
-                                                                                    </p>
+                                                                                    <div className="mt-1 flex flex-col items-center">
+                                                                                        <p className={`text-2xl font-bold ${((fixture.away_score ?? 0) > (fixture.home_score ?? 0) || ((fixture.home_score === fixture.away_score) && (fixture.away_pens ?? 0) > (fixture.home_pens ?? 0))) ? 'text-gold' : 'text-muted-foreground'}`}>
+                                                                                            {fixture.away_score}
+                                                                                        </p>
+                                                                                        {fixture.away_pens !== null && fixture.away_pens !== undefined && (
+                                                                                            <p className="text-xs text-muted-foreground opacity-80 mt-0.5">({fixture.away_pens} pens)</p>
+                                                                                        )}
+                                                                                    </div>
                                                                                 )}
                                                                             </div>
                                                                         </div>
