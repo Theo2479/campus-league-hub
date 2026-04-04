@@ -52,6 +52,12 @@ def create_fixture():
     if data.get('awayScore') is not None:
         fixture.away_score = int(data.get('awayScore'))
 
+    if getattr(fixture, 'tournament_id', None) and fixture.home_score is not None and fixture.home_score == fixture.away_score:
+        if data.get('homePens') is not None:
+            fixture.home_pens = int(data.get('homePens'))
+        if data.get('awayPens') is not None:
+            fixture.away_pens = int(data.get('awayPens'))
+
     db.session.add(fixture)
     db.session.commit()
 
@@ -116,6 +122,15 @@ def update_fixture(fixture_id):
         fixture.home_score = int(data.get('homeScore'))
     if data.get('awayScore') is not None:
         fixture.away_score = int(data.get('awayScore'))
+
+    if fixture.tournament_id and fixture.home_score is not None and fixture.home_score == fixture.away_score:
+        if data.get('homePens') is not None:
+            fixture.home_pens = int(data.get('homePens'))
+        if data.get('awayPens') is not None:
+            fixture.away_pens = int(data.get('awayPens'))
+    else:
+        fixture.home_pens = None
+        fixture.away_pens = None
 
     if changes:
         game_name = f"{fixture.home_team.name} vs {fixture.away_team.name}"

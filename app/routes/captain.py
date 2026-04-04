@@ -97,18 +97,23 @@ def get_captain_fixtures():
         f_dict['is_home'] = f.home_team_id == team.id
         # Calculate result
         if f.home_score is not None and f.away_score is not None:
-            if f.home_team_id == team.id:
-                if f.home_score > f.away_score:
-                    f_dict['result'] = 'win'
-                elif f.home_score < f.away_score:
-                    f_dict['result'] = 'loss'
-                else:
-                    f_dict['result'] = 'draw'
+            my_score = f.home_score if f.home_team_id == team.id else f.away_score
+            opp_score = f.away_score if f.home_team_id == team.id else f.home_score
+            my_pens = getattr(f, 'home_pens', None) if f.home_team_id == team.id else getattr(f, 'away_pens', None)
+            opp_pens = getattr(f, 'away_pens', None) if f.home_team_id == team.id else getattr(f, 'home_pens', None)
+            
+            if my_score > opp_score:
+                f_dict['result'] = 'win'
+            elif my_score < opp_score:
+                f_dict['result'] = 'loss'
             else:
-                if f.away_score > f.home_score:
-                    f_dict['result'] = 'win'
-                elif f.away_score < f.home_score:
-                    f_dict['result'] = 'loss'
+                if my_pens is not None and opp_pens is not None:
+                    if my_pens > opp_pens:
+                        f_dict['result'] = 'win'
+                    elif my_pens < opp_pens:
+                        f_dict['result'] = 'loss'
+                    else:
+                        f_dict['result'] = 'draw'
                 else:
                     f_dict['result'] = 'draw'
         past_list.append(f_dict)

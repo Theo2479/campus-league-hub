@@ -20,6 +20,7 @@ interface ScoreSubmissionDialogProps {
     gameId: number;
     homeTeamName: string;
     awayTeamName: string;
+    isTournamentGame?: boolean;
     onSuccess: () => void;
     trigger?: React.ReactNode;
 }
@@ -30,6 +31,7 @@ export function ScoreSubmissionDialog({
     gameId,
     homeTeamName,
     awayTeamName,
+    isTournamentGame,
     onSuccess,
     trigger
 }: ScoreSubmissionDialogProps) {
@@ -40,7 +42,13 @@ export function ScoreSubmissionDialog({
 
     const [homeScore, setHomeScore] = useState("");
     const [awayScore, setAwayScore] = useState("");
+    const [homePens, setHomePens] = useState("");
+    const [awayPens, setAwayPens] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Derived state checking if standard play ended in a draw, allowing for penalties
+    const isDraw = homeScore !== "" && awayScore !== "" && homeScore === awayScore;
+    const showPens = isTournamentGame && isDraw;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,15 +59,27 @@ export function ScoreSubmissionDialog({
         setIsSubmitting(true);
 
         try {
+            const payload: any = {
+                home_score: parseInt(homeScore),
+                away_score: parseInt(awayScore)
+            };
+
+            if (showPens) {
+                if (homePens === "" || awayPens === "") {
+                    toast.error('Please enter the penalty scores');
+                    setIsSubmitting(false);
+                    return;
+                }
+                payload.home_pens = parseInt(homePens);
+                payload.away_pens = parseInt(awayPens);
+            }
+
             const response = await apiFetch(`/api/fixtures/${gameId}/score`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    home_score: parseInt(homeScore),
-                    away_score: parseInt(awayScore)
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -115,6 +135,35 @@ export function ScoreSubmissionDialog({
                                 />
                             </div>
                         </div>
+
+                        {showPens && (
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border mt-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="home-pens">{homeTeamName} (Pens)</Label>
+                                    <Input
+                                        id="home-pens"
+                                        type="number"
+                                        min="0"
+                                        value={homePens}
+                                        onChange={(e) => setHomePens(e.target.value)}
+                                        placeholder="0"
+                                        required={showPens}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="away-pens">{awayTeamName} (Pens)</Label>
+                                    <Input
+                                        id="away-pens"
+                                        type="number"
+                                        min="0"
+                                        value={awayPens}
+                                        onChange={(e) => setAwayPens(e.target.value)}
+                                        placeholder="0"
+                                        required={showPens}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>

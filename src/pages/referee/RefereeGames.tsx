@@ -22,6 +22,8 @@ interface Game {
   status: string;
   home_score?: number;
   away_score?: number;
+  home_pens?: number;
+  away_pens?: number;
   round_name?: string | null;
   tournament_id?: number | null;
 }
@@ -153,7 +155,10 @@ const RefereeGames = () => {
                 {game.status === 'completed' && (
                   <div className="flex items-center gap-3 text-sm font-bold text-navy">
                     <CheckCircle className="h-4 w-4" />
-                    <span>Result: {game.home_score} - {game.away_score}</span>
+                    <span>
+                      Result: {game.home_score} - {game.away_score} 
+                      {game.home_pens !== null && game.home_pens !== undefined && ` (${game.home_pens}-${game.away_pens} on pens)`}
+                    </span>
                   </div>
                 )}
                 {game.status === 'cancelled' && (
@@ -218,6 +223,7 @@ const RefereeGames = () => {
           gameId={selectedGame.id}
           homeTeamName={selectedGame.home_team}
           awayTeamName={selectedGame.away_team}
+          isTournamentGame={!!selectedGame.tournament_id}
           onSuccess={fetchGames}
         />
       )}
