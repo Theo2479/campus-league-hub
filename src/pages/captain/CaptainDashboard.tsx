@@ -200,7 +200,7 @@ const CaptainDashboard = () => {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
           label="League Position"
-          value={position ? `#${position}` : 'test'}
+          value={position ? `#${position}` : '-'}
           icon={<Trophy className="h-6 w-6" />}
         />
         <StatCard
