@@ -303,6 +303,7 @@ const CaptainDashboard = () => {
                       <div>
                         <p className="font-semibold text-foreground">
                           {fixture.home_team} {fixture.home_score} - {fixture.away_score} {fixture.away_team}
+                          {fixture.home_pens !== null && fixture.home_pens !== undefined && ` (${fixture.home_pens}-${fixture.away_pens} pens)`}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
                           {format(parseISO(fixture.date), 'MMMM d, yyyy')}

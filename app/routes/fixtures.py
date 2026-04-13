@@ -168,6 +168,15 @@ def submit_score(fixture_id):
     fixture.home_score = home_score
     fixture.away_score = away_score
     fixture.status = 'completed'
+
+    if fixture.tournament_id and home_score == away_score:
+        if data.get('home_pens') is not None:
+            fixture.home_pens = int(data.get('home_pens'))
+        if data.get('away_pens') is not None:
+            fixture.away_pens = int(data.get('away_pens'))
+    else:
+        fixture.home_pens = None
+        fixture.away_pens = None
     
     # Skip stat updates for tournament (cup) games
     if fixture.tournament_id:

@@ -207,6 +207,7 @@ def generate_knockout_bracket(tid):
                 time_slot=slot['time'],
                 pitch=slot['pitch'].name,
                 status='scheduled'
+
             )
             db.session.add(fixture)
             fixtures_created.append(fixture)
@@ -280,6 +281,12 @@ def advance_tournament_round(tid):
                 winners.append(f.home_team_id)
             elif f.away_score > f.home_score:
                 winners.append(f.away_team_id)
+            else:
+                if f.home_pens > f.away_pens:
+                    winners.append(f.home_team_id)
+
+                elif f.away_pens > f.home_pens:
+                    winners.append(f.away_team_id)
 
     bye_team_ids = data.get('byeTeamIds', [])
     for b in bye_team_ids:

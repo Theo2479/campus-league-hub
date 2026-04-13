@@ -156,6 +156,7 @@ const CaptainFixtures = () => {
                       <span className="mx-2">{fixture.away_score}</span>
                     )}
                     {fixture.away_team}
+                    {fixture.home_pens !== null && fixture.home_pens !== undefined && ` (${fixture.home_pens}-${fixture.away_pens} pens)`}
                   </>
                 ) : (
                   <>
@@ -168,6 +169,7 @@ const CaptainFixtures = () => {
                       <span className="mx-2">{fixture.away_score}</span>
                     )}
                     <span className="text-gold">{fixture.away_team}</span>
+                    {fixture.home_pens !== null && fixture.home_pens !== undefined && ` (${fixture.home_pens}-${fixture.away_pens} pens)`}
                   </>
                 )}
               </p>
