@@ -11,6 +11,7 @@ import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
 import ChatPage from "./pages/ChatPage";
+import LandingPage from "./pages/LandingPage";
 
 // Referee Pages
 import RefereeDashboard from "./pages/referee/RefereeDashboard";
@@ -57,9 +58,12 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      {/* Landing Page */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Login - redirects if already authenticated */}
       <Route
-        path="/"
+        path="/login"
         element={
           isAuthenticated && user ? (
             <Navigate to={`/${user.role === 'captain' ? 'captain' : user.role}`} replace />
