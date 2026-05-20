@@ -98,7 +98,7 @@ const Login = () => {
             </Button>
 
             <div className="mt-4 text-center text-sm text-muted-foreground">
-              <p>Contact your league administrator for login credentials</p>
+              <p>Contact Theo Jouas-Yosano at 23jouast@gmail.com if interested</p>
             </div>
           </form>
         </CardContent>
