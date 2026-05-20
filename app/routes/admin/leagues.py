@@ -69,28 +69,24 @@ def delete_league(league_id):
         from app.models import ChatChannel, TeamDivision
 
         for division in league.divisions:
-            team_ids = [td.team_id for td in division.teams]
-            if team_ids:
-                fixtures = Fixture.query.filter(
-                    (Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))
-                ).all()
-                if fixtures:
-                    fixture_ids = [f.id for f in fixtures]
+            fixtures = Fixture.query.filter_by(division_id=division.id).all()
+            if fixtures:
+                fixture_ids = [f.id for f in fixtures]
 
-                    ChatChannel.query.filter(
+                ChatChannel.query.filter(
                         ChatChannel.fixture_id.in_(fixture_ids),
                         ChatChannel.type == 'game'
                     ).delete(synchronize_session=False)
 
-                    for f in fixtures:
-                        if f.date and f.time_slot:
-                            fixture_date = f.date.date() if hasattr(f.date, 'date') else f.date
-                            RefereeAvailability.query.filter_by(
-                                date=fixture_date,
-                                time_slot=f.time_slot
-                            ).delete(synchronize_session=False)
+                for f in fixtures:
+                    if f.date and f.time_slot:
+                        fixture_date = f.date.date() if hasattr(f.date, 'date') else f.date
+                        RefereeAvailability.query.filter_by(
+                            date=fixture_date,
+                            time_slot=f.time_slot
+                        ).delete(synchronize_session=False)
 
-                    Fixture.query.filter(Fixture.id.in_(fixture_ids)).delete(synchronize_session=False)
+                Fixture.query.filter(Fixture.id.in_(fixture_ids)).delete(synchronize_session=False)
 
             TeamDivision.query.filter_by(division_id=division.id).delete(synchronize_session=False)
 
@@ -141,22 +137,18 @@ def delete_division(division_id):
         return jsonify({'error': 'Division not found'}), 404
 
     try:
-        team_ids = [td.team_id for td in division.teams]
-        if team_ids:
-            fixtures = Fixture.query.filter(
-                (Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))
-            ).all()
-            if fixtures:
-                for f in fixtures:
-                    if f.date and f.time_slot:
-                        fixture_date = f.date.date() if hasattr(f.date, 'date') else f.date
-                        RefereeAvailability.query.filter_by(
-                            date=fixture_date,
-                            time_slot=f.time_slot
-                        ).delete(synchronize_session=False)
+        fixtures = Fixture.query.filter_by(division_id=division_id).all()
+        if fixtures:
+            for f in fixtures:
+                if f.date and f.time_slot:
+                    fixture_date = f.date.date() if hasattr(f.date, 'date') else f.date
+                    RefereeAvailability.query.filter_by(
+                        date=fixture_date,
+                        time_slot=f.time_slot
+                    ).delete(synchronize_session=False)
 
-                fixture_ids = [f.id for f in fixtures]
-                Fixture.query.filter(Fixture.id.in_(fixture_ids)).delete(synchronize_session=False)
+            fixture_ids = [f.id for f in fixtures]
+            Fixture.query.filter(Fixture.id.in_(fixture_ids)).delete(synchronize_session=False)
 
         from app.models import TeamDivision
         TeamDivision.query.filter_by(division_id=division.id).delete(synchronize_session=False)
@@ -212,14 +204,7 @@ def get_division_fixtures(division_id):
     if not division:
         return jsonify({'error': 'Division not found'}), 404
 
-    team_ids = [td.team_id for td in division.teams]
-
-    if not team_ids:
-        return jsonify({'fixtures': []})
-
-    fixtures = Fixture.query.filter(
-        (Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))
-    ).order_by(Fixture.date.desc()).all()
+    fixtures = Fixture.query.filter_by(division_id=division_id).order_by(Fixture.date.desc()).all()
 
     return jsonify({
         'fixtures': [f.to_dict() for f in fixtures],
@@ -264,37 +249,33 @@ def get_division_overview(division_id):
             'points': td.points
         })
 
-    if not team_ids:
-        upcoming_fixtures = []
-        past_fixtures = []
-    else:
-        now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
 
-        upcoming = Fixture.query.filter(
-            ((Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))),
-            Fixture.date >= now,
-            Fixture.status.in_(['scheduled', 'postponed']),
-            Fixture.tournament_id == None
-        ).order_by(Fixture.date.asc()).all()
+    upcoming = Fixture.query.filter(
+        Fixture.division_id == division_id,
+        Fixture.date >= now,
+        Fixture.status.in_(['scheduled', 'postponed']),
+        Fixture.tournament_id == None
+    ).order_by(Fixture.date.asc()).all()
 
-        past = Fixture.query.filter(
-            ((Fixture.home_team_id.in_(team_ids)) | (Fixture.away_team_id.in_(team_ids))),
-            (Fixture.date < now) | (Fixture.status == 'completed'),
-            Fixture.tournament_id == None
-        ).order_by(Fixture.date.desc()).all()
+    past = Fixture.query.filter(
+        Fixture.division_id == division_id,
+        (Fixture.date < now) | (Fixture.status == 'completed'),
+        Fixture.tournament_id == None
+    ).order_by(Fixture.date.desc()).all()
 
-        upcoming_fixtures = []
-        for f in upcoming:
+    upcoming_fixtures = []
+    for f in upcoming:
             f_dict = f.to_dict()
             f_dict['ref_id'] = f.ref_id
             f_dict['has_referee'] = f.ref_id is not None
             upcoming_fixtures.append(f_dict)
 
-        past_fixtures = []
-        for f in past:
-            f_dict = f.to_dict()
-            f_dict['ref_id'] = f.ref_id
-            past_fixtures.append(f_dict)
+    past_fixtures = []
+    for f in past:
+        f_dict = f.to_dict()
+        f_dict['ref_id'] = f.ref_id
+        past_fixtures.append(f_dict)
 
     return jsonify({
         'division': division.to_dict(),

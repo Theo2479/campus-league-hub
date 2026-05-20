@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trophy, Medal, Percent } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiFetch } from '@/lib/api';
 import type { LeaderboardTeam } from '@/types/api';
 
@@ -19,14 +20,18 @@ interface TopScorer {
 const Leaderboard = () => {
     const [leaderboard, setLeaderboard] = useState<LeaderboardTeam[]>([]);
     const [scorers, setScorers] = useState<TopScorer[]>([]);
+    const [leagues, setLeagues] = useState<{id: number, name: string}[]>([]);
+    const [selectedLeagueId, setSelectedLeagueId] = useState<string>("all");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [lbRes, scorerRes] = await Promise.all([
-                    apiFetch("/api/leaderboard"),
-                    apiFetch("/api/top-scorers")
+                const lbUrl = selectedLeagueId === "all" ? "/api/leaderboard" : `/api/leaderboard?league_id=${selectedLeagueId}`;
+                const [lbRes, scorerRes, leaguesRes] = await Promise.all([
+                    apiFetch(lbUrl),
+                    apiFetch("/api/top-scorers"),
+                    leagues.length === 0 ? apiFetch("/api/leagues") : Promise.resolve(null)
                 ]);
 
                 if (lbRes.ok) {
@@ -38,6 +43,11 @@ const Leaderboard = () => {
                     const data = await scorerRes.json();
                     setScorers(data.scorers);
                 }
+                
+                if (leaguesRes && leaguesRes.ok) {
+                    const data = await leaguesRes.json();
+                    setLeagues(data.leagues);
+                }
             } catch (error) {
                 console.error("Error fetching stats:", error);
             } finally {
@@ -46,7 +56,7 @@ const Leaderboard = () => {
         };
 
         fetchData();
-    }, []);
+    }, [selectedLeagueId]);
 
     return (
         <DashboardLayout>
@@ -58,12 +68,27 @@ const Leaderboard = () => {
             <div className="grid gap-6 md:grid-cols-3">
                 {/* League Table - Takes up 2 columns */}
                 <Card className="md:col-span-2">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <Trophy className="h-5 w-5 text-gold" />
-                            <CardTitle>League Table</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Trophy className="h-5 w-5 text-gold" />
+                                <CardTitle>League Table</CardTitle>
+                            </div>
+                            <CardDescription>Overall Standings</CardDescription>
                         </div>
-                        <CardDescription>Wednesday League 1 Standings</CardDescription>
+                        <div className="w-48">
+                            <Select value={selectedLeagueId} onValueChange={setSelectedLeagueId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Leagues" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Leagues</SelectItem>
+                                    {leagues.map(league => (
+                                        <SelectItem key={league.id} value={league.id.toString()}>{league.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <Table>

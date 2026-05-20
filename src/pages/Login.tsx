@@ -22,9 +22,8 @@ const Login = () => {
 
     try {
       await login(username, password);
-      // Navigation is handled by the protected route wrapper or we can redirect based on role here
-      // For now, let's just go to the dashboard which should redirect based on role
-      navigate('/');
+      // Navigation is automatically handled by the route wrapper in App.tsx
+      // which redirects authenticated users away from /login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid credentials');
     } finally {
@@ -107,7 +106,7 @@ const Login = () => {
 
       {/* Footer */}
       <p className="mt-12 text-sm text-muted-foreground">
-        Theo Jouas-Yosano beta tester.
+        Version 1.1
       </p>
     </div>
   );

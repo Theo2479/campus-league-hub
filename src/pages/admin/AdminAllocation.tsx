@@ -292,11 +292,13 @@ const AdminAllocation = () => {
                                     ))}
                                 </div>
                             ) : coverageData.length > 0 ? (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-4 gap-4 text-sm font-medium text-muted-foreground mb-2 px-4">
-                                        <div className="col-span-2">Time Slot</div>
+                                <div className="space-y-2">
+                                    {/* Header row */}
+                                    <div className="grid grid-cols-[2fr_1fr_1fr_2rem] gap-4 text-sm font-medium text-muted-foreground px-4 pb-1">
+                                        <div>Time Slot</div>
                                         <div>Games</div>
                                         <div>Available refs</div>
+                                        <div />
                                     </div>
                                     {coverageData.map((slot, idx) => {
                                         const dateLabel = format(new Date(slot.date), 'EEE, MMM d');
@@ -305,7 +307,7 @@ const AdminAllocation = () => {
                                         const isExact = slot.ref_count === slot.game_count;
 
                                         return (
-                                            <div key={idx} className="flex items-center justify-between p-4 bg-card border border-border rounded-lg shadow-sm">
+                                            <div key={idx} className="grid grid-cols-[2fr_1fr_1fr_2rem] gap-4 items-center p-4 bg-card border border-border rounded-lg shadow-sm">
                                                 <div className="flex flex-col">
                                                     <span className="font-semibold text-foreground">{dateLabel}</span>
                                                     <span className="text-sm text-gold">{slot.time}</span>
@@ -316,7 +318,7 @@ const AdminAllocation = () => {
                                                     <span className="font-medium">{slot.game_count}</span>
                                                 </div>
 
-                                                <div className="flex items-center gap-2 w-24">
+                                                <div className="flex items-center gap-2">
                                                     <Users className="h-4 w-4 text-muted-foreground" />
                                                     <Badge
                                                         variant={isShortage ? "destructive" : "secondary"}
@@ -326,7 +328,7 @@ const AdminAllocation = () => {
                                                     </Badge>
                                                 </div>
 
-                                                <div className="w-8 flex justify-center">
+                                                <div className="flex justify-center">
                                                     {isShortage && <AlertTriangle className="h-4 w-4 text-destructive" />}
                                                     {(isSurplus || isExact) && slot.game_count > 0 && <CheckCircle className="h-4 w-4 text-success" />}
                                                 </div>

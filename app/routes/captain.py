@@ -38,17 +38,44 @@ def get_captain_team():
         if primary_division.league:
             team_data['league_name'] = primary_division.league.name
             
-        # Attach the stats dict expected by frontend
         team_data['stats'] = {
-            'played': primary_td.played,
-            'won': primary_td.won,
-            'drawn': primary_td.drawn,
-            'lost': primary_td.lost,
-            'points': primary_td.points,
-            'goals_for': primary_td.goals_for,
-            'goals_against': primary_td.goals_against,
-            'goal_difference': primary_td.goal_difference
+            'played': sum(td.played for td in team.divisions),
+            'won': sum(td.won for td in team.divisions),
+            'drawn': sum(td.drawn for td in team.divisions),
+            'lost': sum(td.lost for td in team.divisions),
+            'points': sum(td.points for td in team.divisions),
+            'goals_for': sum(td.goals_for for td in team.divisions),
+            'goals_against': sum(td.goals_against for td in team.divisions),
+            'goal_difference': sum(td.goal_difference for td in team.divisions)
         }
+        
+        division_stats = []
+        for td in team.divisions:
+            higher_ranked = TeamDivision.query.filter(
+                TeamDivision.division_id == td.division_id,
+                db.or_(
+                    TeamDivision.points > td.points,
+                    db.and_(
+                        TeamDivision.points == td.points, 
+                        (TeamDivision.goals_for - TeamDivision.goals_against) > (td.goals_for - td.goals_against)
+                    )
+                )
+            ).count()
+            position = higher_ranked + 1
+            
+            division_stats.append({
+                'division_id': td.division_id,
+                'position': position,
+                'played': td.played,
+                'won': td.won,
+                'drawn': td.drawn,
+                'lost': td.lost,
+                'points': td.points,
+                'goals_for': td.goals_for,
+                'goals_against': td.goals_against,
+                'goal_difference': td.goal_difference
+            })
+        team_data['division_stats'] = division_stats
     else:
         # Fallback empty stats if not in a division
         team_data['stats'] = {
@@ -84,17 +111,27 @@ def get_captain_fixtures():
         (Fixture.date < now) | (Fixture.status == 'completed')
     ).order_by(Fixture.date.desc()).all()
     
-    # Enrich fixture data
+    from app.models import Division
     upcoming_list = []
     for f in upcoming:
         f_dict = f.to_dict()
         f_dict['is_home'] = f.home_team_id == team.id
+        if f.division_id:
+            div = Division.query.get(f.division_id)
+            if div:
+                f_dict['league_name'] = div.league.name if div.league else None
+                f_dict['division_name'] = div.name
         upcoming_list.append(f_dict)
     
     past_list = []
     for f in past:
         f_dict = f.to_dict()
         f_dict['is_home'] = f.home_team_id == team.id
+        if f.division_id:
+            div = Division.query.get(f.division_id)
+            if div:
+                f_dict['league_name'] = div.league.name if div.league else None
+                f_dict['division_name'] = div.name
         # Calculate result
         if f.home_score is not None and f.away_score is not None:
             my_score = f.home_score if f.home_team_id == team.id else f.away_score
@@ -139,10 +176,24 @@ def get_captain_standings():
     # Get all TeamDivision associations for this team
     td_assocs = TeamDivision.query.filter_by(team_id=team.id).all()
     if not td_assocs:
-        return jsonify({'standings': [], 'leagueName': 'Not assigned'})
+        return jsonify({'standings': [], 'leagueName': 'Not assigned', 'available_divisions': []})
         
-    # By default, show standings for the first division
-    division = td_assocs[0].division
+    available_divisions = []
+    for td in td_assocs:
+        available_divisions.append({
+            'id': td.division.id,
+            'name': td.division.name,
+            'league_name': td.division.league.name if td.division.league else None
+        })
+
+    division_id_str = request.args.get('division_id')
+    if division_id_str and division_id_str.isdigit():
+        target_div_id = int(division_id_str)
+        target_td = next((td for td in td_assocs if td.division_id == target_div_id), None)
+        division = target_td.division if target_td else td_assocs[0].division
+    else:
+        # By default, show standings for the first division
+        division = td_assocs[0].division
     
     # Get all team division records for this division
     division_teams = TeamDivision.query.filter_by(division_id=division.id).all()
@@ -177,7 +228,8 @@ def get_captain_standings():
         'standings': standings,
         'division': division.to_dict(),
         'league_name': division.league.name if division.league else None,
-        'team_position': team_position
+        'team_position': team_position,
+        'available_divisions': available_divisions
     })
 
 

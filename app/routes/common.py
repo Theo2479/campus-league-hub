@@ -5,7 +5,7 @@ Includes health check, leaderboard, notifications, and approvals.
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Team, Notification, PostponementRequest, Player
+from app.models import Team, Notification, PostponementRequest, Player, League
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,23 +21,37 @@ def health_check():
 
 # =====================================
 # LEADERBOARD & STATS
-# =====================================
+@common.route('/leagues', methods=['GET'])
+def get_leagues():
+    """Get all leagues for filtering."""
+    leagues = League.query.all()
+    return jsonify({'leagues': [{'id': l.id, 'name': l.name} for l in leagues]})
 
 @common.route('/leaderboard', methods=['GET'])
 def get_leaderboard():
-    """Get league table aggregated across all divisions for a global leaderboard."""
+    """Get league table aggregated across all divisions for a global leaderboard, or filtered by league_id."""
+    league_id_str = request.args.get('league_id')
+    league_id = int(league_id_str) if league_id_str and league_id_str.isdigit() else None
+
     teams = Team.query.all()
     
     leaderboard_data = []
     for t in teams:
-        # Aggregate stats from all divisions the team is in
-        played = sum(td.played for td in t.divisions)
-        won = sum(td.won for td in t.divisions)
-        drawn = sum(td.drawn for td in t.divisions)
-        lost = sum(td.lost for td in t.divisions)
-        points = sum(td.points for td in t.divisions)
-        goals_for = sum(td.goals_for for td in t.divisions)
-        goals_against = sum(td.goals_against for td in t.divisions)
+        if league_id:
+            divisions = [td for td in t.divisions if td.division.league_id == league_id]
+            if not divisions:
+                continue
+        else:
+            divisions = t.divisions
+
+        # Aggregate stats from filtered divisions the team is in
+        played = sum(td.played for td in divisions)
+        won = sum(td.won for td in divisions)
+        drawn = sum(td.drawn for td in divisions)
+        lost = sum(td.lost for td in divisions)
+        points = sum(td.points for td in divisions)
+        goals_for = sum(td.goals_for for td in divisions)
+        goals_against = sum(td.goals_against for td in divisions)
         goal_difference = goals_for - goals_against
         
         team_data = {

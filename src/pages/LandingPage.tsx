@@ -54,7 +54,7 @@ const LandingPage = () => {
               for Sports Leagues.
             </h1>
             <p className="text-lg lg:text-xl text-white/60 mb-8 leading-relaxed max-w-xl">
-              Automate administration, effortlessly connect teams, organizers, and referees in one centralized platform built for modern sports.
+              Automate administration, effortlessly connect teams, organisers, and referees in one centralised platform built for modern sports.
             </p>
             <div className="flex flex-wrap gap-4">
               <Button
@@ -112,7 +112,7 @@ const LandingPage = () => {
               </div>
               <h3 className="text-2xl font-semibold mb-3">For Teams</h3>
               <p className="text-white/60 leading-relaxed">
-                A centralized hub for your squad. View upcoming fixtures and communicate seamlessly in one dedicated space.
+                A centralised hub for your squad. View upcoming fixtures and communicate seamlessly in one dedicated space.
               </p>
             </div>
 
@@ -123,7 +123,7 @@ const LandingPage = () => {
               </div>
               <h3 className="text-2xl font-semibold mb-3">For Referees</h3>
               <p className="text-white/60 leading-relaxed">
-                Take control of your schedule. Submit availability dynamically, receive automated game assignments, and maintain privacy with centralized comms.
+                Take control of your schedule. Submit availability dynamically, receive automated game assignments, and maintain privacy with centralised comms.
               </p>
             </div>
           </div>
@@ -196,7 +196,7 @@ const LandingPage = () => {
                 </li>
                 <li className="flex items-center gap-3">
                   <div className="h-6 w-6 rounded-full bg-vibrant-orange/20 flex items-center justify-center text-vibrant-orange">✓</div>
-                  Centralized, private group chats
+                  Centralised, private group chats
                 </li>
               </ul>
             </div>
