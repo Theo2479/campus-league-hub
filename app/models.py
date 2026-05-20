@@ -203,6 +203,7 @@ class Fixture(db.Model):
             'away_team': self.away_team.name if self.away_team else 'Unknown',
             'home_team_id': self.home_team_id,
             'away_team_id': self.away_team_id,
+            'division_id': self.division_id,
             'date': self.date.isoformat() if self.date else None,
             'time': self.time_slot,
             'venue': self.pitch,

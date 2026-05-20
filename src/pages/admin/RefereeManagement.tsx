@@ -40,7 +40,6 @@ interface Referee {
   id: number;
   username: string;
   name: string;
-  phone: string;
   games_reffed: number;
   games_assigned: number;
   availability_submissions: number;
@@ -56,7 +55,6 @@ const RefereeManagement = () => {
   // Form state
   const [newUsername, setNewUsername] = useState('');
   const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -100,7 +98,6 @@ const RefereeManagement = () => {
         body: JSON.stringify({
           username: newUsername.trim(),
           name: newName.trim() || newUsername.trim(),
-          phone: newPhone.trim(),
           password: newPassword.trim()
         })
       });
@@ -110,7 +107,6 @@ const RefereeManagement = () => {
         setIsAddDialogOpen(false);
         setNewUsername('');
         setNewName('');
-        setNewPhone('');
         setNewPassword('');
         fetchReferees();
       } else {
@@ -202,7 +198,6 @@ const RefereeManagement = () => {
                 <TableRow>
                   <TableHead>Username</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Phone</TableHead>
                   <TableHead className="text-center" title="Games marked as Completed">Games Reffed</TableHead>
                   <TableHead className="text-center" title="Total games currently assigned">Assigned</TableHead>
                   <TableHead className="text-center" title="Number of availability slots submitted">Availability</TableHead>
@@ -214,7 +209,6 @@ const RefereeManagement = () => {
                   <TableRow key={referee.id}>
                     <TableCell className="font-medium">{referee.username}</TableCell>
                     <TableCell>{referee.name || '-'}</TableCell>
-                    <TableCell>{referee.phone || '-'}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200 border-green-200">
                         {referee.games_reffed}
@@ -270,15 +264,6 @@ const RefereeManagement = () => {
                 placeholder="e.g. John Smith"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                placeholder="e.g. 07700 900000"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
               />
             </div>
             <div className="space-y-2">

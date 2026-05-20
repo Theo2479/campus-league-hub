@@ -9,6 +9,9 @@ export interface Fixture {
   away_team: string;
   home_team_id: number;
   away_team_id: number;
+  division_id?: number | null;
+  league_name?: string | null;
+  division_name?: string | null;
   date: string;
   time: string;
   venue: string;
@@ -44,6 +47,7 @@ export interface TeamData {
   division_name?: string;
   league_name?: string;
   stats: TeamStats;
+  division_stats?: (TeamStats & { division_id: number; position: number })[];
 }
 
 export interface StandingsRow {
@@ -59,6 +63,12 @@ export interface StandingsRow {
   goal_difference: number;
   points: number;
   is_my_team?: boolean;
+}
+
+export interface AvailableDivision {
+  id: number;
+  name: string;
+  league_name?: string | null;
 }
 
 export interface LeaderboardTeam {

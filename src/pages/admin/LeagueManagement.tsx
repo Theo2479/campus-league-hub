@@ -153,7 +153,7 @@ const LeagueManagement = () => {
             id: d.id.toString(),
             name: d.name,
             leagueId: l.id.toString(),
-            teams: d.teams // IDs
+            teams: d.teams.map((id: any) => id.toString()) // Convert team IDs to strings
           }))
         }));
         setLeagues(mapped);
@@ -304,14 +304,16 @@ const LeagueManagement = () => {
     }
   };
 
-  const getTeamName = (teamId: string) => {
-    return availableTeams.find(t => t.id === teamId)?.name || teamId;
+  const getTeamName = (teamId: string | number) => {
+    const idStr = String(teamId);
+    return availableTeams.find(t => t.id === idStr)?.name || idStr;
   };
 
-  const getTeamDivisionLabel = (teamId: string): string | null => {
+  const getTeamDivisionLabel = (teamId: string | number): string | null => {
+    const idStr = String(teamId);
     for (const league of leagues) {
       for (const div of league.divisions) {
-        if (div.id !== selectedDivision?.id && div.teams.includes(teamId)) {
+        if (div.id !== selectedDivision?.id && div.teams.includes(idStr)) {
           return `${league.name} — ${div.name}`;
         }
       }
@@ -627,7 +629,7 @@ const LeagueManagement = () => {
           </DialogHeader>
           <div className="max-h-[300px] overflow-y-auto py-4">
             <div className="space-y-2">
-              {availableTeams.map(team => {
+              {availableTeams.map((team, index) => {
                 const otherDivision = getTeamDivisionLabel(team.id);
                 return (
                   <div key={team.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50">
@@ -637,7 +639,7 @@ const LeagueManagement = () => {
                       onCheckedChange={() => handleTeamToggle(team.id)}
                     />
                     <label htmlFor={team.id} className="flex-1 text-sm font-medium cursor-pointer">
-                      {team.name}
+                      <span className="text-gold mr-2 font-bold">{index + 1}.</span>{team.name}
                       {otherDivision && (
                         <span className="text-xs text-muted-foreground ml-2">({otherDivision})</span>
                       )}

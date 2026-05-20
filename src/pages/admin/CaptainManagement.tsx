@@ -47,7 +47,6 @@ interface Captain {
     id: number;
     username: string;
     name: string;
-    phone: string;
     team_id: number | null;
     team_name: string | null;
 }
@@ -68,7 +67,6 @@ const CaptainManagement = () => {
     // Form state
     const [newUsername, setNewUsername] = useState('');
     const [newName, setNewName] = useState('');
-    const [newPhone, setNewPhone] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [selectedTeamId, setSelectedTeamId] = useState<string>('none');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,7 +129,6 @@ const CaptainManagement = () => {
                 body: JSON.stringify({
                     username: newUsername.trim(),
                     name: newName.trim() || newUsername.trim(),
-                    phone: newPhone.trim(),
                     password: newPassword.trim(),
                     team_id: selectedTeamId && selectedTeamId !== 'none' ? parseInt(selectedTeamId) : null
                 })
@@ -142,7 +139,6 @@ const CaptainManagement = () => {
                 setIsAddDialogOpen(false);
                 setNewUsername('');
                 setNewName('');
-                setNewPhone('');
                 setNewPassword('');
                 setSelectedTeamId('none');
                 fetchCaptains();
@@ -235,7 +231,6 @@ const CaptainManagement = () => {
                                 <TableRow>
                                     <TableHead>Username</TableHead>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Phone</TableHead>
                                     <TableHead>Team</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -245,7 +240,6 @@ const CaptainManagement = () => {
                                     <TableRow key={captain.id}>
                                         <TableCell className="font-medium">{captain.username}</TableCell>
                                         <TableCell>{captain.name || '-'}</TableCell>
-                                        <TableCell>{captain.phone || '-'}</TableCell>
                                         <TableCell>
                                             {captain.team_name ? (
                                                 <Badge variant="default" className="bg-gold/20 text-gold-foreground border-gold/30">
@@ -299,15 +293,6 @@ const CaptainManagement = () => {
                                 placeholder="e.g. John Smith"
                                 value={newName}
                                 onChange={(e) => setNewName(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">Phone Number</Label>
-                            <Input
-                                id="phone"
-                                placeholder="e.g. 07700 900000"
-                                value={newPhone}
-                                onChange={(e) => setNewPhone(e.target.value)}
                             />
                         </div>
                         <div className="space-y-2">

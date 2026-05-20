@@ -74,6 +74,18 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           light: "hsl(var(--warning-light))",
         },
+        charcoal: {
+          DEFAULT: "#121212",
+        },
+        "electric-green": {
+          DEFAULT: "#00FF66",
+        },
+        "bright-blue": {
+          DEFAULT: "#00E5FF",
+        },
+        "vibrant-orange": {
+          DEFAULT: "#FF4D00",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
