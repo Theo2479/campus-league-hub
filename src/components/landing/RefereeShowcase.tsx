@@ -47,7 +47,7 @@ export const RefereeShowcase: React.FC = () => {
       subtitle: 'Communicate Without Sharing Contact Info',
       description: 'Join the dedicated chat for your assigned matches to coordinate with team captains. Your personal phone number remains completely private.',
       icon: MessageSquare,
-      primaryImage: '/Screenshots/referee/ref chat 1.png',
+      primaryImage: '/Screenshots/referee/ref chats.png',
       highlights: [
         'Direct access to both team captains',
         'Perfect for confirming pitch locations or kick-off delays',
