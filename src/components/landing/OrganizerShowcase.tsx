@@ -31,19 +31,6 @@ export const OrganizerShowcase: React.FC = () => {
       ]
     },
     {
-      id: 'scheduling',
-      title: 'Automated Scheduling',
-      subtitle: 'One-Click Full-Season Fixture Generation',
-      description: 'Generate full-season fixtures and allocate pitches automatically for any number of games.',
-      icon: CalendarRange,
-      primaryImage: '/Screenshots/organizer/admin league overview.png',
-      highlights: [
-        'Generate balanced fixtures for entire divisions with one click',
-        'Automatic pitch allocation across all scheduled time slots',
-        'Add new divisions and leagues on-the-fly as your program grows'
-      ]
-    },
-    {
       id: 'refereeing',
       title: 'Smart Referee Allocation',
       subtitle: 'Automated 3-Stage Assignment Algorithm',
@@ -55,6 +42,19 @@ export const OrganizerShowcase: React.FC = () => {
         'Open availability windows for referees to self-select time slots',
         'Live coverage overview showing demand vs. available officials',
         'One-click allocation with reliability scoring and conflict prevention'
+      ]
+    },
+    {
+      id: 'scheduling',
+      title: 'Automated Scheduling',
+      subtitle: 'One-Click Full-Season Fixture Generation',
+      description: 'Generate full-season fixtures and allocate pitches automatically for any number of games.',
+      icon: CalendarRange,
+      primaryImage: '/Screenshots/organizer/admin league overview.png',
+      highlights: [
+        'Generate balanced fixtures for entire divisions with one click',
+        'Automatic pitch allocation across all scheduled time slots',
+        'Add new divisions and leagues on-the-fly as your program grows'
       ]
     },
     {
