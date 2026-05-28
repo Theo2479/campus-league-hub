@@ -50,10 +50,6 @@ const LandingPage = () => {
 
         <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/10 border border-gold/20 mb-6">
-              <span className="flex h-2 w-2 rounded-full bg-gold animate-pulse"></span>
-              <span className="text-sm font-medium text-gold">Next-Gen League Management</span>
-            </div>
             <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
               The All-in-One <br />
               <span className="text-gold">
@@ -71,14 +67,14 @@ const LandingPage = () => {
               >
                 Start Your League <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              
+
               <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-sm">
                 <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center text-gold shrink-0">
                   <Mail className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">Interested in early access?</p>
-                  <p className="text-sm text-slate-300">Contact Theo Jouas-Yosano at <br/><a href="mailto:23jouast@gmail.com" className="text-gold font-bold hover:underline">23jouast@gmail.com</a></p>
+                  <p className="text-sm text-slate-300">Contact Theo Jouas-Yosano at <br /><a href="mailto:23jouast@gmail.com" className="text-gold font-bold hover:underline">23jouast@gmail.com</a></p>
                 </div>
               </div>
             </div>
@@ -107,7 +103,7 @@ const LandingPage = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* For Organizers */}
-            <div 
+            <div
               onClick={() => scrollToShowcase('organizer')}
               className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 hover:shadow-md hover:border-gold/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1"
             >
@@ -121,7 +117,7 @@ const LandingPage = () => {
             </div>
 
             {/* For Teams */}
-            <div 
+            <div
               onClick={() => scrollToShowcase('team')}
               className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 hover:shadow-md hover:border-gold/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1"
             >
@@ -135,7 +131,7 @@ const LandingPage = () => {
             </div>
 
             {/* For Referees */}
-            <div 
+            <div
               onClick={() => scrollToShowcase('referee')}
               className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 hover:shadow-md hover:border-gold/50 transition-all duration-300 group cursor-pointer hover:-translate-y-1"
             >
@@ -165,31 +161,28 @@ const LandingPage = () => {
           <div className="flex justify-center gap-2 mt-8 max-w-md mx-auto p-1 bg-slate-100 rounded-full">
             <button
               onClick={() => setActiveRole('organizer')}
-              className={`flex-1 py-2.5 px-5 rounded-full text-xs lg:text-sm font-semibold tracking-wide transition-all ${
-                activeRole === 'organizer'
+              className={`flex-1 py-2.5 px-5 rounded-full text-xs lg:text-sm font-semibold tracking-wide transition-all ${activeRole === 'organizer'
                   ? 'bg-navy text-white shadow-md'
                   : 'text-slate-500 hover:text-navy hover:bg-slate-200'
-              }`}
+                }`}
             >
               Organizers
             </button>
             <button
               onClick={() => setActiveRole('team')}
-              className={`flex-1 py-2.5 px-5 rounded-full text-xs lg:text-sm font-semibold tracking-wide transition-all ${
-                activeRole === 'team'
+              className={`flex-1 py-2.5 px-5 rounded-full text-xs lg:text-sm font-semibold tracking-wide transition-all ${activeRole === 'team'
                   ? 'bg-navy text-white shadow-md'
                   : 'text-slate-500 hover:text-navy hover:bg-slate-200'
-              }`}
+                }`}
             >
               Teams
             </button>
             <button
               onClick={() => setActiveRole('referee')}
-              className={`flex-1 py-2.5 px-5 rounded-full text-xs lg:text-sm font-semibold tracking-wide transition-all ${
-                activeRole === 'referee'
+              className={`flex-1 py-2.5 px-5 rounded-full text-xs lg:text-sm font-semibold tracking-wide transition-all ${activeRole === 'referee'
                   ? 'bg-navy text-white shadow-md'
                   : 'text-slate-500 hover:text-navy hover:bg-slate-200'
-              }`}
+                }`}
             >
               Referees
             </button>
